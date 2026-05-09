@@ -3,7 +3,8 @@
     "allow": [
       "Bash(xargs grep *)",
       "Bash(python install.py -a build-only -c debug)",
-      "Bash(where python3 *)"
+      "Bash(where python3 *)",
+      "Bash(./build/bin/Debug/slideio_tests.exe --gtest_filter=\"*SVS*:*Svs*:*svs*\" --gtest_brief=1)"
     ]
   }
 }

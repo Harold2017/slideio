@@ -30,7 +30,6 @@ namespace slideio
             const std::vector<int>& channelIndices, int zSliceIndex, int tFrameIndex, cv::OutputArray output) override;
     private:
         slideio::TiffDirectory m_directory;
-        LevelInfo m_levelInfo;
     };
 }
 

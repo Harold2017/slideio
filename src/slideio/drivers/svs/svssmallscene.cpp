@@ -43,11 +43,13 @@ SVSSmallScene::SVSSmallScene(const std::string& filePath,
         m_resolution = { res, res };
     }
     m_compression = m_directory.slideioCompression;
-    m_levelInfo.setMagnification(0.);
-    m_levelInfo.setScale(1.);
-    m_levelInfo.setTileSize({ m_directory.tileWidth, m_directory.tileHeight});
-    m_levelInfo.setSize({ m_directory.width, m_directory.height });
-    m_levelInfo.setLevel(0);
+    LevelInfo level;
+    level.setLevel(0);
+    level.setScale(1.);
+    level.setMagnification(m_magnification);
+    level.setTileSize({ m_directory.tileWidth, m_directory.tileHeight });
+    level.setSize({ m_directory.width, m_directory.height });
+    m_levels.push_back(level);
 }
 
 
