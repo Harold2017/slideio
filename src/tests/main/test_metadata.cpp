@@ -1,6 +1,8 @@
 #include <gtest/gtest.h>
 #include "slideio/core/metadata.hpp"
 #include "slideio/core/metadata_internal.hpp"
+#include "slideio/core/cvscene.hpp"
+#include "slideio/core/cvslide.hpp"
 #include <nlohmann/json.hpp>
 
 using namespace slideio;
@@ -160,8 +162,6 @@ TEST(MetadataXml, EndToEndViaMetadata)
     EXPECT_EQ(m["Image"]["Pixels"]["@SizeY"].asInt(), 256);
 }
 
-#include "slideio/core/cvscene.hpp"
-
 namespace
 {
     class TestScene : public slideio::CVScene
@@ -234,4 +234,41 @@ TEST(MetadataScene, GetMetadataIsCached)
     const auto& a = s.getMetadata();
     const auto& b = s.getMetadata();
     EXPECT_EQ(&a, &b);  // same reference => cached
+}
+
+namespace
+{
+    class TestSlide : public slideio::CVSlide
+    {
+    public:
+        TestSlide(const std::string& raw, slideio::MetadataFormat fmt)
+        {
+            m_rawMetadata    = raw;
+            m_metadataFormat = fmt;
+        }
+        int getNumScenes() const override { return 0; }
+        std::string getFilePath() const override { return {}; }
+        std::shared_ptr<slideio::CVScene> getScene(int) const override { return {}; }
+    };
+}
+
+TEST(MetadataSlide, JsonFormatParses)
+{
+    TestSlide s(R"({"vendor":"Aperio"})", slideio::MetadataFormat::JSON);
+    const auto& m = s.getMetadata();
+    EXPECT_EQ(m["vendor"].asString(), "Aperio");
+}
+
+TEST(MetadataSlide, XmlFormatGoesThroughWalker)
+{
+    TestSlide s(R"(<Slide><Vendor>Hamamatsu</Vendor></Slide>)",
+                slideio::MetadataFormat::XML);
+    const auto& m = s.getMetadata();
+    EXPECT_EQ(m["Slide"]["Vendor"].asString(), "Hamamatsu");
+}
+
+TEST(MetadataSlide, IsCached)
+{
+    TestSlide s(R"({"k":1})", slideio::MetadataFormat::JSON);
+    EXPECT_EQ(&s.getMetadata(), &s.getMetadata());
 }

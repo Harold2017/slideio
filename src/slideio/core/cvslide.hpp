@@ -6,7 +6,9 @@
 
 #include "slideio/core/slideio_core_def.hpp"
 #include "slideio/core/cvscene.hpp"
+#include "slideio/core/metadata.hpp"
 #include <string>
+#include <mutex>
 
 #if defined(_MSC_VER)
 #pragma warning( push )
@@ -39,6 +41,8 @@ namespace slideio
          *Content of the string depends on image driver and may be plain text,
         xml or json formatted string. Default value is an empty string.*/
         virtual const std::string& getRawMetadata() const {return m_rawMetadata;}
+        /**@brief returns metadata as a navigable tree. Built lazily on first call. */
+        const Metadata& getMetadata() const;
         /**@brief The method returns a CVScene object by the scene index.*/
         virtual std::shared_ptr<CVScene> getScene(int index) const = 0;
         /**@brief The method returns a CVScene object by the scene name.*/
@@ -76,10 +80,17 @@ namespace slideio
 		 /**@brief The method returns a string containing serialized metadata of the slide. */
          std::string toString() const;
     protected:
+        virtual void buildMetadataTree(void* rootHandle) const;
+
+    protected:
         std::string m_rawMetadata;
 		MetadataFormat m_metadataFormat = MetadataFormat::None;
         std::list<std::string> m_auxNames;
         std::string m_driverId;
+
+    private:
+        mutable std::once_flag m_metadataOnce;
+        mutable Metadata       m_metadata;
     };
 }
 
