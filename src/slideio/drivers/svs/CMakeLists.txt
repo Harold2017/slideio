@@ -38,19 +38,21 @@ find_package(PNG)
 find_package(ZLIB)
 find_package(OpenJPEG)
 find_package(Iconv)
+find_package(nlohmann_json REQUIRED)
 
-target_link_libraries(${LIBRARY_NAME} 
+target_link_libraries(${LIBRARY_NAME}
    SQLite::SQLite3
-   glog::glog  
-   opencv::opencv  
-   TIFF::TIFF  
-   LibLZMA::LibLZMA  
-   JPEG::JPEG  
-   libwebp::libwebp  
-   PNG::PNG  
-   ZLIB::ZLIB  
-   openjp2  
+   glog::glog
+   opencv::opencv
+   TIFF::TIFF
+   LibLZMA::LibLZMA
+   JPEG::JPEG
+   libwebp::libwebp
+   PNG::PNG
+   ZLIB::ZLIB
+   openjp2
    Iconv::Iconv
+   nlohmann_json::nlohmann_json
 )
 
 

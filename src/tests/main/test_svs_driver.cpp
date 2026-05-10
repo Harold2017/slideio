@@ -1,14 +1,18 @@
 ﻿#include <gtest/gtest.h>
 #include "slideio/drivers/svs/svsimagedriver.hpp"
 #include "slideio/drivers/svs/svstiledscene.hpp"
+#include "slideio/drivers/svs/svstools.hpp"
 #include "slideio/imagetools/imagetools.hpp"
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
 #include "tests/testlib/testtools.hpp"
 #include "slideio/base/exceptions.hpp"
 #include "slideio/slideio/slideio.hpp"
+#include "slideio/slideio/slide.hpp"
+#include "slideio/core/metadata.hpp"
 
 #include <stdint.h>
+#include <fstream>
 #include <functional>
 #include <numeric>
 #include <vector>
@@ -592,5 +596,62 @@ TEST(SVSImageDriver, multiThreadSceneAccess) {
     const std::string filePath = TestTools::getTestImagePath("svs", "JP2K-33003-1.svs");
     slideio::SVSImageDriver driver;
     TestTools::multiThreadedTest(filePath, driver);
+}
+
+TEST(SVSTools, ParseAperioMetadataHeaderOnly)
+{
+    const std::string raw = "Aperio GT450 v1.0\n100x200 (256x256) JPEG Q=91";
+    const auto j = slideio::SVSTools::parseAperioMetadata(raw);
+    EXPECT_EQ(j["application"], "Aperio GT450 v1.0");
+    EXPECT_EQ(j["image"],       "100x200 (256x256) JPEG Q=91");
+    EXPECT_FALSE(j.contains("properties"));
+}
+
+TEST(SVSTools, ParseAperioMetadataWithProperties)
+{
+    const std::string raw =
+        "Aperio Leica Biosystems GT450 v1.0.1\n"
+        "56326x65243 [0,0,56326x65243] (256x256) JPEG/YCC Q=91"
+        "|AppMag = 40|Date = 07/30/2021|MPP = 0.263869";
+    const auto j = slideio::SVSTools::parseAperioMetadata(raw);
+    EXPECT_EQ(j["application"], "Aperio Leica Biosystems GT450 v1.0.1");
+    EXPECT_EQ(j["image"],       "56326x65243 [0,0,56326x65243] (256x256) JPEG/YCC Q=91");
+    EXPECT_EQ(j["properties"]["AppMag"], "40");
+    EXPECT_EQ(j["properties"]["Date"],   "07/30/2021");
+    EXPECT_EQ(j["properties"]["MPP"],    "0.263869");
+}
+
+TEST(SVSTools, ParseAperioMetadataPropertiesNoSpaces)
+{
+    const std::string raw = "App\nImage|Key=Value|Key2=Value2";
+    const auto j = slideio::SVSTools::parseAperioMetadata(raw);
+    EXPECT_EQ(j["properties"]["Key"],  "Value");
+    EXPECT_EQ(j["properties"]["Key2"], "Value2");
+}
+
+TEST(SVSTools, ParseAperioMetadataEmpty)
+{
+    const auto j = slideio::SVSTools::parseAperioMetadata("");
+    EXPECT_TRUE(j.is_object());
+    EXPECT_FALSE(j.contains("application"));
+    EXPECT_FALSE(j.contains("properties"));
+}
+
+TEST(SVSImageDriver, MetadataTreeIsStructured)
+{
+    const std::string filePath = TestTools::getTestImagePath("svs", "CMU-1-Small-Region.svs");
+    if (!std::ifstream(filePath).good()) {
+        GTEST_SKIP() << "Fixture not available: " << filePath;
+    }
+    auto slide = slideio::openSlide(filePath, "SVS");
+    ASSERT_TRUE(slide);
+
+    const auto& meta = slide->getMetadata();
+    EXPECT_TRUE(meta.isObject());
+    EXPECT_TRUE(meta.contains("application"));
+    EXPECT_TRUE(meta.contains("properties"));
+    EXPECT_GT(meta["properties"].size(), 0u);
+    // AppMag is a standard Aperio property — should be present and non-empty.
+    EXPECT_FALSE(meta["properties"]["AppMag"].asString().empty());
 }
 

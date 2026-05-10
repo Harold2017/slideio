@@ -6,6 +6,7 @@
 
 #include "slideio/drivers/svs/svs_api_def.hpp"
 #include <opencv2/core.hpp>
+#include <nlohmann/json.hpp>
 #include <string>
 
 namespace slideio
@@ -17,6 +18,10 @@ namespace slideio
         static int extractMagnifiation(const std::string& description);
         // Extracts resolution value from image information string
         static double extractResolution(const std::string& description);
+        // Parses an Aperio-format metadata string into a structured JSON tree.
+        // Header lines (before the first '|') become "application" and "image";
+        // subsequent "name = value" tokens become entries under "properties".
+        static nlohmann::json parseAperioMetadata(const std::string& description);
     };
 }
 

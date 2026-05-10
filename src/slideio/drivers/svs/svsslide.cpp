@@ -5,7 +5,9 @@
 #include "slideio/imagetools/imagetools.hpp"
 #include "slideio/drivers/svs/svssmallscene.hpp"
 #include "slideio/drivers/svs/svstiledscene.hpp"
+#include "slideio/drivers/svs/svstools.hpp"
 #include "slideio/imagetools/tifftools.hpp"
+#include "slideio/core/metadata_internal.hpp"
 #include "slideio/base/log.hpp"
 
 #include <filesystem>
@@ -149,4 +151,9 @@ void SVSSlide::log()
 {
     SLIDEIO_LOG(INFO) << "---SVSSlide" << std::endl;
     SLIDEIO_LOG(INFO) << "filePath:" << m_filePath << std::endl;
+}
+
+void SVSSlide::buildMetadataTree(void* rootHandle) const
+{
+    detail::asJson(rootHandle) = SVSTools::parseAperioMetadata(m_rawMetadata);
 }

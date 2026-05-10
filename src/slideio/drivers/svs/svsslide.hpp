@@ -37,6 +37,8 @@ namespace slideio
         static void closeFile(libtiff::TIFF* hfile);
         std::shared_ptr<CVScene> getAuxImage(const std::string& sceneName) const override;
         void log();
+    protected:
+        void buildMetadataTree(void* rootHandle) const override;
     private:
         std::vector<std::shared_ptr<slideio::CVScene>> m_Scenes;
         std::map<std::string, std::shared_ptr<slideio::CVScene>> m_auxImages;
