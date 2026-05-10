@@ -18,6 +18,7 @@ set(SOURCE_FILES
    ${CMAKE_CURRENT_SOURCE_DIR}/levelinfo.cpp
    ${CMAKE_CURRENT_SOURCE_DIR}/dimensions.hpp
    ${CMAKE_CURRENT_SOURCE_DIR}/metadata.hpp
+   ${CMAKE_CURRENT_SOURCE_DIR}/metadata_internal.hpp
    ${CMAKE_CURRENT_SOURCE_DIR}/metadata.cpp
    )
 

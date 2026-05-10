@@ -2,6 +2,7 @@
 // It is subject to the license terms in the LICENSE file found in the top-level directory
 // of this distribution and at http://slideio.com/license.html.
 #include "slideio/core/metadata.hpp"
+#include "slideio/core/metadata_internal.hpp"
 #include <nlohmann/json.hpp>
 #include <stdexcept>
 
@@ -19,6 +20,14 @@ namespace slideio
         {
             static const nlohmann::json kNull;
             return (p && p->view) ? *p->view : kNull;
+        }
+        Metadata makeChild(const std::shared_ptr<const Metadata::Impl>& parent,
+                           const nlohmann::json& child)
+        {
+            auto impl = std::make_shared<Metadata::Impl>();
+            impl->root = parent->root;
+            impl->view = &child;
+            return Metadata::fromImpl(impl);
         }
     }
 
@@ -51,16 +60,94 @@ namespace slideio
         }
     }
 
-    bool        Metadata::asBool()   const { throw std::runtime_error("not implemented"); }
-    int64_t     Metadata::asInt()    const { throw std::runtime_error("not implemented"); }
-    double      Metadata::asDouble() const { throw std::runtime_error("not implemented"); }
-    std::string Metadata::asString() const { throw std::runtime_error("not implemented"); }
+    bool Metadata::asBool() const
+    {
+        const auto& n = view(m_impl);
+        if (n.is_boolean()) return n.get<bool>();
+        if (n.is_number())  return n.get<double>() != 0.0;
+        if (n.is_string())  { auto s = n.get<std::string>(); return s == "true" || s == "1"; }
+        throw std::runtime_error("Metadata: not convertible to bool");
+    }
+    int64_t Metadata::asInt() const
+    {
+        const auto& n = view(m_impl);
+        if (n.is_number_integer())  return n.get<int64_t>();
+        if (n.is_number_unsigned()) return static_cast<int64_t>(n.get<uint64_t>());
+        if (n.is_number_float())    return static_cast<int64_t>(n.get<double>());
+        if (n.is_boolean())         return n.get<bool>() ? 1 : 0;
+        if (n.is_string())          return std::stoll(n.get<std::string>());
+        throw std::runtime_error("Metadata: not convertible to int");
+    }
+    double Metadata::asDouble() const
+    {
+        const auto& n = view(m_impl);
+        if (n.is_number())  return n.get<double>();
+        if (n.is_boolean()) return n.get<bool>() ? 1.0 : 0.0;
+        if (n.is_string())  return std::stod(n.get<std::string>());
+        throw std::runtime_error("Metadata: not convertible to double");
+    }
+    std::string Metadata::asString() const
+    {
+        const auto& n = view(m_impl);
+        if (n.is_string()) return n.get<std::string>();
+        if (n.is_null())   return {};
+        return n.dump();
+    }
 
-    size_t   Metadata::size() const { return 0; }
-    bool     Metadata::contains(const std::string&) const { return false; }
-    Metadata Metadata::operator[](const std::string&) const { return Metadata(); }
-    Metadata Metadata::operator[](size_t) const { return Metadata(); }
-    Metadata Metadata::find(const std::string&) const { return Metadata(); }
-    std::vector<std::string> Metadata::keys() const { return {}; }
+    size_t Metadata::size() const
+    {
+        const auto& n = view(m_impl);
+        return (n.is_object() || n.is_array()) ? n.size() : 0;
+    }
+    bool Metadata::contains(const std::string& key) const
+    {
+        const auto& n = view(m_impl);
+        return n.is_object() && n.contains(key);
+    }
+    Metadata Metadata::operator[](const std::string& key) const
+    {
+        const auto& n = view(m_impl);
+        if (!m_impl || !n.is_object() || !n.contains(key)) return Metadata();
+        return makeChild(m_impl, n.at(key));
+    }
+    Metadata Metadata::operator[](size_t i) const
+    {
+        const auto& n = view(m_impl);
+        if (!m_impl || !n.is_array() || i >= n.size()) return Metadata();
+        return makeChild(m_impl, n.at(i));
+    }
+    Metadata Metadata::find(const std::string& pointer) const
+    {
+        if (!m_impl) return Metadata();
+        try
+        {
+            nlohmann::json::json_pointer ptr(pointer);
+            const auto& target = view(m_impl).at(ptr);
+            return makeChild(m_impl, target);
+        }
+        catch (...) { return Metadata(); }
+    }
+    std::vector<std::string> Metadata::keys() const
+    {
+        const auto& n = view(m_impl);
+        std::vector<std::string> out;
+        if (n.is_object())
+        {
+            out.reserve(n.size());
+            for (auto it = n.begin(); it != n.end(); ++it) out.push_back(it.key());
+        }
+        return out;
+    }
     std::string Metadata::toJson(int indent) const { return view(m_impl).dump(indent); }
+
+    namespace detail {
+        Metadata makeMetadataFromJson(nlohmann::json root)
+        {
+            auto impl    = std::make_shared<Metadata::Impl>();
+            auto rootPtr = std::make_shared<const nlohmann::json>(std::move(root));
+            impl->root   = rootPtr;
+            impl->view   = rootPtr.get();
+            return Metadata::fromImpl(impl);
+        }
+    }
 }
