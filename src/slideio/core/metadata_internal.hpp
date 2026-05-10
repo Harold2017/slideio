@@ -5,12 +5,16 @@
 #define OPENCV_slideio_metadata_internal_HPP
 
 #include "slideio/core/metadata.hpp"
+#include "slideio/base/slideio_enums.hpp"
 #include <nlohmann/json.hpp>
 
 namespace slideio { namespace detail {
 
     SLIDEIO_CORE_EXPORTS Metadata    makeMetadataFromJson(nlohmann::json root);
     SLIDEIO_CORE_EXPORTS nlohmann::json xmlStringToJson(const std::string& xml);
+    SLIDEIO_CORE_EXPORTS void buildDefaultMetadataTree(nlohmann::json& root,
+                                                      const std::string& rawMetadata,
+                                                      MetadataFormat fmt);
 
     inline nlohmann::json& asJson(void* handle)
     {

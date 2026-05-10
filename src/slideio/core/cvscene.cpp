@@ -316,27 +316,8 @@ const std::string& CVScene::getChannelAttributeName(int index) const {
 
 void CVScene::buildMetadataTree(void* rootHandle) const
 {
-    using nlohmann::json;
-    auto& root = *static_cast<json*>(rootHandle);
-    switch (m_metadataFormat)
-    {
-    case MetadataFormat::JSON:
-        try { root = json::parse(m_rawMetadata); }
-        catch (...) {
-            root = json{{"#error", "invalid json"}, {"raw", m_rawMetadata}};
-        }
-        break;
-    case MetadataFormat::XML:
-        root = detail::xmlStringToJson(m_rawMetadata);
-        break;
-    case MetadataFormat::Text:
-        root = json{{"text", m_rawMetadata}};
-        break;
-    case MetadataFormat::None:
-    default:
-        root = json::object();
-        break;
-    }
+    detail::buildDefaultMetadataTree(detail::asJson(rootHandle),
+                                     m_rawMetadata, m_metadataFormat);
 }
 
 const Metadata& CVScene::getMetadata() const

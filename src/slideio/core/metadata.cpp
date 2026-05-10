@@ -149,5 +149,31 @@ namespace slideio
             impl->view   = rootPtr.get();
             return Metadata::fromImpl(impl);
         }
+
+        void buildDefaultMetadataTree(nlohmann::json& root,
+                                      const std::string& rawMetadata,
+                                      MetadataFormat fmt)
+        {
+            using nlohmann::json;
+            switch (fmt)
+            {
+            case MetadataFormat::JSON:
+                try { root = json::parse(rawMetadata); }
+                catch (...) {
+                    root = json{{"#error", "invalid json"}, {"raw", rawMetadata}};
+                }
+                break;
+            case MetadataFormat::XML:
+                root = xmlStringToJson(rawMetadata);
+                break;
+            case MetadataFormat::Text:
+                root = json{{"text", rawMetadata}};
+                break;
+            case MetadataFormat::None:
+            default:
+                root = json::object();
+                break;
+            }
+        }
     }
 }
