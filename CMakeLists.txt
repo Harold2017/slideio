@@ -251,9 +251,10 @@ install(FILES
     DESTINATION include/slideio/converter)
 
 
-install(FILES 
-    ${INCLUDE_ROOT}/slideio/core/slideio_core_def.hpp 
-    ${INCLUDE_ROOT}/slideio/core/levelinfo.hpp 
+install(FILES
+    ${INCLUDE_ROOT}/slideio/core/slideio_core_def.hpp
+    ${INCLUDE_ROOT}/slideio/core/levelinfo.hpp
+    ${INCLUDE_ROOT}/slideio/core/metadata.hpp
     DESTINATION include/slideio/core)
 
 install(FILES 
