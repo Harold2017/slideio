@@ -217,12 +217,12 @@ TEST(MetadataScene, FormatJsonParses)
     EXPECT_EQ(m["k"].asInt(), 42);
 }
 
-TEST(MetadataScene, FormatJsonMalformedIncludesErrorAndRaw)
+TEST(MetadataScene, FormatJsonMalformedGivesErrorOnly)
 {
     TestScene s("{not json", slideio::MetadataFormat::JSON);
     const auto& m = s.getMetadata();
-    EXPECT_TRUE(m.contains("#error"));
-    EXPECT_EQ(m["raw"].asString(), "{not json");
+    EXPECT_EQ(m["#error"].asString(), "invalid json");
+    EXPECT_FALSE(m.contains("raw"));
 }
 
 TEST(MetadataScene, FormatXmlGoesThroughWalker)

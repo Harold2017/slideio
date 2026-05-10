@@ -160,7 +160,7 @@ namespace slideio
             case MetadataFormat::JSON:
                 try { root = json::parse(rawMetadata); }
                 catch (...) {
-                    root = json{{"#error", "invalid json"}, {"raw", rawMetadata}};
+                    root = json{{"#error", "invalid json"}};
                 }
                 break;
             case MetadataFormat::XML:
