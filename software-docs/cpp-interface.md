@@ -102,6 +102,9 @@ public:
     // Format of the raw metadata.
     MetadataFormat getMetadataFormat() const;
 
+    // Structured metadata as a navigable tree (lazy-built, cached).
+    const Metadata& getMetadata() const;
+
     // --- Auxiliary images ---
 
     // Names of all auxiliary images (e.g. "label", "macro").
@@ -249,6 +252,9 @@ public:
     std::string getRawMetadata() const;
     MetadataFormat getMetadataFormat() const;
 
+    // Structured metadata as a navigable tree (lazy-built, cached).
+    const Metadata& getMetadata() const;
+
     // --- Channel attributes ---
 
     int getNumChannelAttributes() const;
@@ -276,6 +282,21 @@ typedef std::shared_ptr<slideio::Scene> ScenePtr;
 
 ---
 
+## Structured metadata
+
+Both `Slide` and `Scene` expose metadata as a read-only tree via `getMetadata()`:
+
+```cpp
+const slideio::Metadata& meta = scene->getMetadata();
+auto sizeX = meta.find("/Image/Pixels/@SizeX").asInt();
+```
+
+The returned `Metadata` is a lightweight view — children obtained via `operator[]`, integer indexing, or RFC-6901 JSON pointers passed to `find()`. The tree is built lazily on first access from the raw driver metadata. For driver formats with XML metadata, attributes appear under `@name`, text content under `#text`, and repeated sibling tags collapse into JSON arrays.
+
+The original raw string is still available via `getRawMetadata()` / `getMetadataFormat()`.
+
+---
+
 ## 4. Core Abstract Base Classes
 
 These classes define the internal extension points. Driver authors implement `ImageDriver`, `CVSlide`, and `CVScene` to add support for new file formats.
@@ -300,6 +321,7 @@ public:
     virtual std::shared_ptr<CVScene> getSceneByName(const std::string& name);
     virtual const std::string& getRawMetadata() const;
     virtual MetadataFormat getMetadataFormat() const;
+    virtual const Metadata& getMetadata() const;
     virtual const std::list<std::string>& getAuxImageNames() const;
     virtual int getNumAuxImages() const;
     virtual std::shared_ptr<CVScene> getAuxImage(const std::string& sceneName) const;
@@ -399,6 +421,7 @@ public:
     // Metadata
     virtual std::string getRawMetadata() const;
     virtual MetadataFormat getMetadataFormat() const;
+    virtual const Metadata& getMetadata() const;
 
     // Channel attributes
     virtual int defineChannelAttribute(const std::string& attributeName);
