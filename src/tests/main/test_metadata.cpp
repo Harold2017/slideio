@@ -159,3 +159,79 @@ TEST(MetadataXml, EndToEndViaMetadata)
     EXPECT_EQ(m["Image"]["Pixels"]["@SizeX"].asInt(), 512);
     EXPECT_EQ(m["Image"]["Pixels"]["@SizeY"].asInt(), 256);
 }
+
+#include "slideio/core/cvscene.hpp"
+
+namespace
+{
+    class TestScene : public slideio::CVScene
+    {
+    public:
+        TestScene(const std::string& raw, slideio::MetadataFormat fmt)
+        {
+            m_rawMetadata    = raw;
+            m_metadataFormat = fmt;
+        }
+        std::string getFilePath() const override { return "test"; }
+        int getSceneIndex() const override { return 0; }
+        const std::string& getDriverId() const override { static const std::string id = "test"; return id; }
+        std::string getName() const override { return "test"; }
+        cv::Rect    getRect() const override { return {0,0,1,1}; }
+        int         getNumChannels() const override { return 1; }
+        slideio::DataType getChannelDataType(int) const override
+        { return slideio::DataType::DT_Byte; }
+        slideio::Resolution getResolution() const override { return {0,0}; }
+        double      getMagnification() const override { return 0; }
+        slideio::Compression getCompression() const override
+        { return slideio::Compression::Uncompressed; }
+        void readResampledBlockChannelsEx(const cv::Rect&, const cv::Size&,
+                                          const std::vector<int>&,
+                                          int, int, cv::OutputArray) override {}
+    };
+}
+
+TEST(MetadataScene, FormatNoneGivesEmptyObject)
+{
+    TestScene s("", slideio::MetadataFormat::None);
+    const auto& m = s.getMetadata();
+    EXPECT_TRUE(m.isObject());
+    EXPECT_EQ(m.size(), 0u);
+}
+
+TEST(MetadataScene, FormatTextWrapsInTextField)
+{
+    TestScene s("hello world", slideio::MetadataFormat::Text);
+    const auto& m = s.getMetadata();
+    EXPECT_EQ(m["text"].asString(), "hello world");
+}
+
+TEST(MetadataScene, FormatJsonParses)
+{
+    TestScene s(R"({"k":42})", slideio::MetadataFormat::JSON);
+    const auto& m = s.getMetadata();
+    EXPECT_EQ(m["k"].asInt(), 42);
+}
+
+TEST(MetadataScene, FormatJsonMalformedIncludesErrorAndRaw)
+{
+    TestScene s("{not json", slideio::MetadataFormat::JSON);
+    const auto& m = s.getMetadata();
+    EXPECT_TRUE(m.contains("#error"));
+    EXPECT_EQ(m["raw"].asString(), "{not json");
+}
+
+TEST(MetadataScene, FormatXmlGoesThroughWalker)
+{
+    TestScene s(R"(<R a="1"><Item>x</Item></R>)", slideio::MetadataFormat::XML);
+    const auto& m = s.getMetadata();
+    EXPECT_EQ(m["R"]["@a"].asString(), "1");
+    EXPECT_EQ(m["R"]["Item"].asString(), "x");
+}
+
+TEST(MetadataScene, GetMetadataIsCached)
+{
+    TestScene s(R"({"k":1})", slideio::MetadataFormat::JSON);
+    const auto& a = s.getMetadata();
+    const auto& b = s.getMetadata();
+    EXPECT_EQ(&a, &b);  // same reference => cached
+}

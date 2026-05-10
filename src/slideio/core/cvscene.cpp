@@ -7,6 +7,8 @@
 #include <numeric>
 #include <mutex>
 #include "slideio/base/exceptions.hpp"
+#include "slideio/core/metadata_internal.hpp"
+#include <nlohmann/json.hpp>
 #include "cvscene.hpp"
 
 
@@ -310,4 +312,40 @@ const std::string& CVScene::getChannelAttributeName(int index) const {
             << " Expected range: [0," << m_channelAttributeNames.size() << ")";
     }
 	return m_channelAttributeNames[index];
+}
+
+void CVScene::buildMetadataTree(void* rootHandle) const
+{
+    using nlohmann::json;
+    auto& root = *static_cast<json*>(rootHandle);
+    switch (m_metadataFormat)
+    {
+    case MetadataFormat::JSON:
+        try { root = json::parse(m_rawMetadata); }
+        catch (...) {
+            root = json{{"#error", "invalid json"}, {"raw", m_rawMetadata}};
+        }
+        break;
+    case MetadataFormat::XML:
+        root = detail::xmlStringToJson(m_rawMetadata);
+        break;
+    case MetadataFormat::Text:
+        root = json{{"text", m_rawMetadata}};
+        break;
+    case MetadataFormat::None:
+    default:
+        root = json::object();
+        break;
+    }
+}
+
+const Metadata& CVScene::getMetadata() const
+{
+    std::call_once(m_metadataOnce, [this]
+    {
+        nlohmann::json root;
+        buildMetadataTree(&root);
+        m_metadata = detail::makeMetadataFromJson(std::move(root));
+    });
+    return m_metadata;
 }

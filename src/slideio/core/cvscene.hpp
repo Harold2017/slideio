@@ -7,6 +7,7 @@
 #include "slideio/core/slideio_core_def.hpp"
 #include "slideio/base/resolution.hpp"
 #include "slideio/base/slideio_enums.hpp"
+#include "slideio/core/metadata.hpp"
 #include <opencv2/core.hpp>
 #include <vector>
 #include <string>
@@ -193,6 +194,8 @@ namespace slideio
         virtual std::shared_ptr<CVScene> getAuxImage(const std::string& imageName) const;
         /**@brief returns string of serialized metadata. Content of the string depends on image format.*/
         virtual std::string getRawMetadata() const { return m_rawMetadata; }
+        /**@brief returns metadata as a navigable tree. Built lazily on first call. */
+        const Metadata& getMetadata() const;
         virtual void readResampledBlockChannelsEx(const cv::Rect& blockRect, const cv::Size& blockSize,
 			const std::vector<int>& componentIndices, int zSliceIndex, int tFrameIndex, cv::OutputArray output) = 0;
         virtual int getNumZoomLevels() const;
@@ -220,6 +223,14 @@ namespace slideio
         std::vector<int> getValidChannelIndices(const std::vector<int>& channelIndices);
         void initializeSceneBlock(const cv::Size& blockSize, const std::vector<int>& channelIndices,
                                   cv::OutputArray output) const;
+        /**@brief Driver hook: convert m_rawMetadata into a JSON tree.
+         *
+         * The default implementation handles MetadataFormat::{None,Text,JSON,XML}.
+         * `rootHandle` is a type-erased pointer to nlohmann::json, valid only for
+         * the duration of the call. Override in drivers that need semantic
+         * structure; cast via slideio::detail::asJson(rootHandle) inside a .cpp
+         * that includes "slideio/core/metadata_internal.hpp". */
+        virtual void buildMetadataTree(void* rootHandle) const;
 
     protected:
         std::list<std::string> m_auxNames;
@@ -229,6 +240,10 @@ namespace slideio
         MetadataFormat m_metadataFormat = MetadataFormat::None;
         std::vector<std::string> m_channelAttributeNames;
         std::vector<std::vector<std::string>> m_channelAttributes;
+
+    private:
+        mutable std::once_flag m_metadataOnce;
+        mutable Metadata       m_metadata;
     };
 }
 
