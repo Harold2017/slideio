@@ -17,6 +17,8 @@ set(SOURCE_FILES
    ${CMAKE_CURRENT_SOURCE_DIR}/levelinfo.hpp
    ${CMAKE_CURRENT_SOURCE_DIR}/levelinfo.cpp
    ${CMAKE_CURRENT_SOURCE_DIR}/dimensions.hpp
+   ${CMAKE_CURRENT_SOURCE_DIR}/metadata.hpp
+   ${CMAKE_CURRENT_SOURCE_DIR}/metadata.cpp
    )
 
 add_subdirectory(tools)
@@ -28,6 +30,7 @@ find_package(SQLite3 REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(Tinyxml2 REQUIRED)
+find_package(nlohmann_json REQUIRED)
 find_package(ICU)
 
 
@@ -36,6 +39,7 @@ target_link_libraries(${LIBRARY_NAME} PRIVATE SQLite::SQLite3)
 target_link_libraries(${LIBRARY_NAME} PRIVATE opencv::opencv)
 target_link_libraries(${LIBRARY_NAME} PRIVATE ZLIB::ZLIB)
 target_link_libraries(${LIBRARY_NAME} PRIVATE tinyxml2::tinyxml2)
+target_link_libraries(${LIBRARY_NAME} PRIVATE nlohmann_json::nlohmann_json)
 target_link_libraries(${LIBRARY_NAME} PRIVATE icu::icu)
 
 SOURCE_GROUP_BY_FOLDER(SOURCE_FILES)
