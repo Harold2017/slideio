@@ -113,3 +113,49 @@ TEST(Metadata, ToJsonRoundTrip)
     EXPECT_EQ(round["k"], 1);
     EXPECT_EQ(round["v"], "hello");
 }
+
+TEST(MetadataXml, ScalarLeaf)
+{
+    auto j = detail::xmlStringToJson("<Foo>123</Foo>");
+    EXPECT_EQ(j["Foo"], "123");
+}
+
+TEST(MetadataXml, AttributesAndText)
+{
+    auto j = detail::xmlStringToJson(R"(<Foo a="1" b="x">hello</Foo>)");
+    ASSERT_TRUE(j["Foo"].is_object());
+    EXPECT_EQ(j["Foo"]["@a"], "1");
+    EXPECT_EQ(j["Foo"]["@b"], "x");
+    EXPECT_EQ(j["Foo"]["#text"], "hello");
+}
+
+TEST(MetadataXml, NestedChildren)
+{
+    auto j = detail::xmlStringToJson(R"(<R><A>1</A><B>2</B></R>)");
+    EXPECT_EQ(j["R"]["A"], "1");
+    EXPECT_EQ(j["R"]["B"], "2");
+}
+
+TEST(MetadataXml, RepeatedSiblingsBecomeArray)
+{
+    auto j = detail::xmlStringToJson(R"(<R><Item>1</Item><Item>2</Item><Item>3</Item></R>)");
+    ASSERT_TRUE(j["R"]["Item"].is_array());
+    EXPECT_EQ(j["R"]["Item"].size(), 3u);
+    EXPECT_EQ(j["R"]["Item"][0], "1");
+    EXPECT_EQ(j["R"]["Item"][2], "3");
+}
+
+TEST(MetadataXml, MalformedReturnsErrorObject)
+{
+    auto j = detail::xmlStringToJson("<not <valid xml");
+    ASSERT_TRUE(j.is_object());
+    EXPECT_TRUE(j.contains("#error"));
+}
+
+TEST(MetadataXml, EndToEndViaMetadata)
+{
+    auto j = detail::xmlStringToJson(R"(<Image><Pixels SizeX="512" SizeY="256"/></Image>)");
+    Metadata m = detail::makeMetadataFromJson(std::move(j));
+    EXPECT_EQ(m["Image"]["Pixels"]["@SizeX"].asInt(), 512);
+    EXPECT_EQ(m["Image"]["Pixels"]["@SizeY"].asInt(), 256);
+}

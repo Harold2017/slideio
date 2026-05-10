@@ -20,6 +20,7 @@ set(SOURCE_FILES
    ${CMAKE_CURRENT_SOURCE_DIR}/metadata.hpp
    ${CMAKE_CURRENT_SOURCE_DIR}/metadata_internal.hpp
    ${CMAKE_CURRENT_SOURCE_DIR}/metadata.cpp
+   ${CMAKE_CURRENT_SOURCE_DIR}/metadata_xml.cpp
    )
 
 add_subdirectory(tools)
