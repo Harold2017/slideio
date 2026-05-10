@@ -300,6 +300,12 @@ MetadataFormat Scene::getMetadataFormat() const {
 	return m_scene->getMetadataFormat();
 }
 
+const slideio::Metadata& slideio::Scene::getMetadata() const
+{
+    SLIDEIO_LOG(INFO) << "Scene::getMetadata ";
+    return m_scene->getMetadata();
+}
+
 std::shared_ptr<Scene> Scene::getAuxImage(const std::string& sceneName) const
 {
     SLIDEIO_LOG(INFO) << "Scene::getAuxImage " << sceneName; 

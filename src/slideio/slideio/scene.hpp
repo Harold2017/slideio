@@ -5,6 +5,7 @@
 
 #include "slideio/slideio/slideio_def.hpp"
 #include "slideio/base/slideio_enums.hpp"
+#include "slideio/core/metadata.hpp"
 #include <string>
 #include <vector>
 #include <memory>
@@ -265,6 +266,8 @@ namespace slideio
         std::string getRawMetadata() const;
 		/**@brief returns metadata format of the scene. */
 		MetadataFormat getMetadataFormat() const;
+        /**@brief returns metadata as a navigable tree. Built lazily on first call. */
+        const Metadata& getMetadata() const;
         /**@brief returns a slideio::Scene object that represents an auxiliary image.
          * @param imageName : name of the auxiliary image.
          */

@@ -3,7 +3,12 @@
 #include "slideio/core/metadata_internal.hpp"
 #include "slideio/core/cvscene.hpp"
 #include "slideio/core/cvslide.hpp"
+#include "slideio/slideio/slideio.hpp"
+#include "slideio/slideio/slide.hpp"
+#include "slideio/slideio/scene.hpp"
+#include "tests/testlib/testtools.hpp"
 #include <nlohmann/json.hpp>
+#include <fstream>
 
 using namespace slideio;
 
@@ -271,4 +276,33 @@ TEST(MetadataSlide, IsCached)
 {
     TestSlide s(R"({"k":1})", slideio::MetadataFormat::JSON);
     EXPECT_EQ(&s.getMetadata(), &s.getMetadata());
+}
+
+TEST(MetadataPublicApi, SceneAndSlideExposeTreeForRealSvs)
+{
+    std::string path;
+    try {
+        path = TestTools::getTestImagePath("svs", "JP2K-33003-1.svs");
+    }
+    catch (...) {
+        GTEST_SKIP() << "SLIDEIO_TEST_DATA_PATH not set";
+    }
+    if (!std::ifstream(path).good()) {
+        GTEST_SKIP() << "Fixture not available: " << path;
+    }
+
+    auto slide = slideio::openSlide(path, "SVS");
+    ASSERT_TRUE(slide);
+
+    const auto& slideMeta = slide->getMetadata();
+    EXPECT_FALSE(slideMeta.isNull());
+
+    auto scene = slide->getScene(0);
+    ASSERT_TRUE(scene);
+    const auto& sceneMeta = scene->getMetadata();
+    EXPECT_FALSE(sceneMeta.isNull());
+
+    // toJson must always succeed and be valid JSON
+    auto roundtrip = nlohmann::json::parse(slideMeta.toJson());
+    SUCCEED();
 }
