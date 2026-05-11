@@ -673,7 +673,8 @@ TEST(CZIImageDriver, channelAttributes)
     auto scene = slide->getScene(0);
     ASSERT_FALSE(scene == nullptr);
     const slideio::Metadata& chanAttrs = scene->getChannelAttributes();
-	ASSERT_EQ(chanAttrs.size(), 3);
+	ASSERT_EQ(chanAttrs.size(), 3u);                  // numChannels for this scene
+	EXPECT_EQ(chanAttrs[0].size(), 10u);              // channel 0 has the 10 distinct attribute names
 	EXPECT_TRUE(chanAttrs[0].contains("Name"));
     EXPECT_EQ(chanAttrs[0]["Name"].asString(),                "ChS1");
     EXPECT_EQ(chanAttrs[1]["Name"].asString(),                "Ch2");
