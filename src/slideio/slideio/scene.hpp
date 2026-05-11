@@ -276,6 +276,12 @@ namespace slideio
         int getNumZoomLevels() const;
         const LevelInfo* getLevelInfo(int level) const;
         std::string toString() const;
+        /**@brief returns channel attributes as a Metadata tree.
+         *
+         * Array of length getNumChannels(); each element is an Object keyed
+         * by attribute name (empty Object if a channel has no attributes).
+         */
+        const Metadata& getChannelAttributes() const;
 		virtual int getNumChannelAttributes() const;
 		virtual int getChannelAttributeIndex(const std::string& attributeName) const;
 		virtual std::string getChannelAttributeName(int attributeIndex) const;

@@ -342,4 +342,9 @@ std::string Scene::getChannelAttributeValue(int channelIndex, const std::string&
 	return m_scene->getChannelAttributeValue(channelIndex, attributeName);
 }
 
+const slideio::Metadata& Scene::getChannelAttributes() const
+{
+    SLIDEIO_LOG(INFO) << "Scene::getChannelAttributes ";
+    return m_scene->getChannelAttributes();
+}
 
