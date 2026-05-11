@@ -110,6 +110,8 @@ namespace slideio
         Metadata freeze() const;
 
         struct Impl;
+        static MetadataBuilder fromImpl(std::shared_ptr<Impl> impl);
+
     private:
         explicit MetadataBuilder(std::shared_ptr<Impl> impl);
         std::shared_ptr<Impl> m_impl;

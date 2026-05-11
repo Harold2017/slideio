@@ -3,7 +3,9 @@
 // of this distribution and at http://slideio.com/license.html.
 #include <gtest/gtest.h>
 #include "slideio/core/metadata.hpp"
+#include "slideio/core/metadata_internal.hpp"
 #include "slideio/base/exceptions.hpp"
+#include <nlohmann/json.hpp>
 
 using namespace slideio;
 
@@ -206,4 +208,49 @@ TEST(MetadataBuilder, FreezeIsIndependentOfLaterMutation)
 
     EXPECT_EQ(snapshot["k"].asString(), "before");    // snapshot unchanged
     EXPECT_EQ(b.freeze()["k"].asString(), "after");
+}
+
+TEST(MetadataBuilder, BuilderFromJsonRoundtrip)
+{
+    nlohmann::json j = {
+        {"channels", nlohmann::json::array({
+            {{"wavelength", "488nm"}, {"exposure", "100ms"}},
+            {{"wavelength", "561nm"}}
+        })}
+    };
+    MetadataBuilder b = slideio::detail::builderFromJson(j);
+
+    Metadata m = b.freeze();
+    EXPECT_TRUE(m.contains("channels"));
+    EXPECT_EQ(m["channels"].size(), 2u);
+    EXPECT_EQ(m["channels"][0]["wavelength"].asString(), "488nm");
+    EXPECT_EQ(m["channels"][0]["exposure"].asString(),   "100ms");
+    EXPECT_EQ(m["channels"][1]["wavelength"].asString(), "561nm");
+}
+
+TEST(MetadataBuilder, MakeDefaultMetadataBuilderTextFormat)
+{
+    MetadataBuilder b = slideio::detail::makeDefaultMetadataBuilder(
+        "raw text content", slideio::MetadataFormat::Text);
+    Metadata m = b.freeze();
+    EXPECT_TRUE(m.contains("text"));
+    EXPECT_EQ(m["text"].asString(), "raw text content");
+}
+
+TEST(MetadataBuilder, MakeDefaultMetadataBuilderJsonFormat)
+{
+    MetadataBuilder b = slideio::detail::makeDefaultMetadataBuilder(
+        R"({"a": 1, "b": "two"})", slideio::MetadataFormat::JSON);
+    Metadata m = b.freeze();
+    EXPECT_EQ(m["a"].asInt(), 1);
+    EXPECT_EQ(m["b"].asString(), "two");
+}
+
+TEST(MetadataBuilder, MakeDefaultMetadataBuilderNoneFormat)
+{
+    MetadataBuilder b = slideio::detail::makeDefaultMetadataBuilder(
+        "", slideio::MetadataFormat::None);
+    Metadata m = b.freeze();
+    EXPECT_EQ(m.type(), Metadata::Type::Object);
+    EXPECT_EQ(m.size(), 0u);
 }

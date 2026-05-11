@@ -176,6 +176,7 @@ namespace slideio
                 break;
             }
         }
+
     }
 
     struct MetadataBuilder::Impl
@@ -214,6 +215,28 @@ namespace slideio
 
     MetadataBuilder& MetadataBuilder::operator=(MetadataBuilder&&) noexcept = default;
     MetadataBuilder::MetadataBuilder(std::shared_ptr<Impl> impl) : m_impl(std::move(impl)) {}
+    MetadataBuilder MetadataBuilder::fromImpl(std::shared_ptr<Impl> impl)
+    {
+        return MetadataBuilder(std::move(impl));
+    }
+
+    namespace detail {
+        MetadataBuilder builderFromJson(nlohmann::json root)
+        {
+            auto impl = std::make_shared<MetadataBuilder::Impl>();
+            impl->root = std::make_shared<nlohmann::json>(std::move(root));
+            impl->view = impl->root.get();
+            return MetadataBuilder::fromImpl(std::move(impl));
+        }
+
+        MetadataBuilder makeDefaultMetadataBuilder(
+            const std::string& rawMetadata, MetadataFormat fmt)
+        {
+            nlohmann::json root;
+            buildDefaultMetadataTree(root, rawMetadata, fmt);
+            return builderFromJson(std::move(root));
+        }
+    }
 
     void MetadataBuilder::set(const std::string& value)
     {
