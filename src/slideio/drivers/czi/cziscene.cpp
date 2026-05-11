@@ -665,47 +665,49 @@ void CZIScene::setupComponents(const std::map<int, int>& channelPixelType)
     int sceneComponentIndex = 0;
     const CZIChannelInfos& fileChannelInfo = m_slide->getChannelInfo();
     m_channelInfos.resize(fileChannelInfo.size());
-    for(int channelIndex=0; channelIndex < static_cast<int>(fileChannelInfo.size()); ++channelIndex) {
+    for (int channelIndex = 0; channelIndex < static_cast<int>(fileChannelInfo.size()); ++channelIndex) {
         const CZIChannelInfo& info = fileChannelInfo[channelIndex];
         m_channelInfos[channelIndex].name = info.id;
     }
     int componentIndex = 0;
-    for(const auto& channel : channelPixelType) {
+    for (const auto& channel : channelPixelType) {
         int channelIndex = channel.first;
         SceneChannelInfo& channelInfo = m_channelInfos[channelIndex];
         CZIDataType channelCZIDataType = static_cast<CZIDataType>(channel.second);
         channelComponentInfo(channelCZIDataType, channelInfo.componentType, channelInfo.numComponents, channelInfo.pixelSize);
         channelInfo.firstComponent = componentIndex;
         componentIndex += channelInfo.numComponents;
-        for(int blockComponentIndex=0; blockComponentIndex< channelInfo.numComponents; ++blockComponentIndex, ++sceneComponentIndex)
+        for (int blockComponentIndex = 0; blockComponentIndex < channelInfo.numComponents; ++blockComponentIndex, ++sceneComponentIndex)
         {
-            m_componentToChannelIndex[sceneComponentIndex] = std::pair<int,int>(channelIndex, blockComponentIndex);
+            m_componentToChannelIndex[sceneComponentIndex] = std::pair<int, int>(channelIndex, blockComponentIndex);
             m_componentInfos.emplace_back();
             auto& componentInfo = m_componentInfos.back();
             componentInfo.dataType = channelInfo.componentType;
             std::string channelName = fileChannelInfo[channelIndex].name;
-            if(channelName.empty())
+            if (channelName.empty())
                 channelName = fileChannelInfo[channelIndex].id;
-            if(channelIndex<static_cast<int>(fileChannelInfo.size()))
+            if (channelIndex < static_cast<int>(fileChannelInfo.size()))
             {
-                if(channelInfo.numComponents ==1)
+                if (channelInfo.numComponents == 1)
                 {
                     componentInfo.name = channelName;
                 }
                 else
                 {
-                    componentInfo.name = channelName + ":" + std::to_string(blockComponentIndex+1);
+                    componentInfo.name = channelName + ":" + std::to_string(blockComponentIndex + 1);
                 }
             }
         }
     }
-    for (int channelIndex = 0; channelIndex < static_cast<int>(fileChannelInfo.size()); ++channelIndex)
-    {
-        const CZIChannelInfo& info = fileChannelInfo[channelIndex];
-        for (const auto& attribute : info.attributes) {
-            const std::string& attributeName = attribute.first;
-            const std::string& attributeValue = attribute.second;
-            setChannelAttribute(channelIndex, attributeName, attributeValue);
+    if (fileChannelInfo.size() == static_cast<size_t>(getNumChannels())) {
+        for (int channelIndex = 0; channelIndex < static_cast<int>(fileChannelInfo.size()); ++channelIndex)
+        {
+            const CZIChannelInfo& info = fileChannelInfo[channelIndex];
+            for (const auto& attribute : info.attributes) {
+                const std::string& attributeName = attribute.first;
+                const std::string& attributeValue = attribute.second;
+                setChannelAttribute(channelIndex, attributeName, attributeValue);
+            }
         }
     }
 }
