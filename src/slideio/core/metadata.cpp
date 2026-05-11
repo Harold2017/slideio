@@ -191,9 +191,27 @@ namespace slideio
         m_impl->view = m_impl->root.get();
     }
     MetadataBuilder::~MetadataBuilder() = default;
-    MetadataBuilder::MetadataBuilder(const MetadataBuilder&) = default;
+    MetadataBuilder::MetadataBuilder(const MetadataBuilder& other)
+        : m_impl(std::make_shared<Impl>())
+    {
+        // Deep copy the visible subtree into a fresh root.
+        m_impl->root = std::make_shared<nlohmann::json>(*other.m_impl->view);
+        m_impl->view = m_impl->root.get();
+    }
+
     MetadataBuilder::MetadataBuilder(MetadataBuilder&&) noexcept = default;
-    MetadataBuilder& MetadataBuilder::operator=(const MetadataBuilder&) = default;
+
+    MetadataBuilder& MetadataBuilder::operator=(const MetadataBuilder& other)
+    {
+        if (this != &other) {
+            auto fresh = std::make_shared<Impl>();
+            fresh->root = std::make_shared<nlohmann::json>(*other.m_impl->view);
+            fresh->view = fresh->root.get();
+            m_impl = std::move(fresh);
+        }
+        return *this;
+    }
+
     MetadataBuilder& MetadataBuilder::operator=(MetadataBuilder&&) noexcept = default;
     MetadataBuilder::MetadataBuilder(std::shared_ptr<Impl> impl) : m_impl(std::move(impl)) {}
 

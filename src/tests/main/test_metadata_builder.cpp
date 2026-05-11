@@ -172,3 +172,38 @@ TEST(MetadataBuilder, OperatorIndexOnScalarThrows)
     b.set(true);
     EXPECT_THROW(b[size_t{0}], slideio::RuntimeError);
 }
+
+TEST(MetadataBuilder, TopLevelCopyIsIndependent)
+{
+    MetadataBuilder a;
+    a["k"].set(std::string("a-value"));
+
+    MetadataBuilder b = a;                            // top-level copy
+    b["k"].set(std::string("b-value"));
+
+    EXPECT_EQ(a.freeze()["k"].asString(), "a-value"); // a unchanged
+    EXPECT_EQ(b.freeze()["k"].asString(), "b-value");
+}
+
+TEST(MetadataBuilder, SubViewSharesStorageWithParent)
+{
+    MetadataBuilder parent;
+    MetadataBuilder child = parent["channels"];
+    child[0]["wavelength"].set(std::string("488nm"));
+
+    Metadata m = parent.freeze();                     // parent sees the child's writes
+    ASSERT_TRUE(m.contains("channels"));
+    EXPECT_EQ(m["channels"][0]["wavelength"].asString(), "488nm");
+}
+
+TEST(MetadataBuilder, FreezeIsIndependentOfLaterMutation)
+{
+    MetadataBuilder b;
+    b["k"].set(std::string("before"));
+
+    Metadata snapshot = b.freeze();
+    b["k"].set(std::string("after"));                 // mutate after freeze
+
+    EXPECT_EQ(snapshot["k"].asString(), "before");    // snapshot unchanged
+    EXPECT_EQ(b.freeze()["k"].asString(), "after");
+}
