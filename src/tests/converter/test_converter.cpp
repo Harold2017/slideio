@@ -227,15 +227,16 @@ TEST(Converter, from3DScene)
 	cv::Mat outputImage(height, width, CV_8UC3, outputBuffer.data());
 	double sim = slideio::ImageTools::computeSimilarity(inputImage, outputImage);
 	EXPECT_LE(0.999, sim);
-	EXPECT_EQ(scene->getNumChannelAttributes(), 10);
-	EXPECT_GE(scene->getChannelAttributeIndex("Name"), 0);
-	EXPECT_EQ(scene->getChannelAttributeValue(0, "Name"), "ChS1");
-	EXPECT_EQ(scene->getChannelAttributeValue(1, "Name"), "Ch2");
-	EXPECT_EQ(scene->getChannelAttributeValue(2, "Name"), "NDD T1");
-	EXPECT_EQ(scene->getChannelAttributeValue(0, "EmissionWavelength"), "610.63882650000005");
-	EXPECT_EQ(scene->getChannelAttributeValue(0, "ChannelType"), "Unspecified");
-	EXPECT_EQ(scene->getChannelAttributeValue(1, "PinholeSizeAiry"), "1");
-	EXPECT_EQ(scene->getChannelAttributeValue(0, "AcquisitionMode"), "LaserScanningConfocalMicroscopy");
+	const slideio::Metadata& chanAttrs = scene->getChannelAttributes();
+	EXPECT_EQ(chanAttrs[0].size(), 10u);                                          // 10 attributes on channel 0
+	EXPECT_TRUE(chanAttrs[0].contains("Name"));
+	EXPECT_EQ(chanAttrs[0]["Name"].asString(),                "ChS1");
+	EXPECT_EQ(chanAttrs[1]["Name"].asString(),                "Ch2");
+	EXPECT_EQ(chanAttrs[2]["Name"].asString(),                "NDD T1");
+	EXPECT_EQ(chanAttrs[0]["EmissionWavelength"].asString(),  "610.63882650000005");
+	EXPECT_EQ(chanAttrs[0]["ChannelType"].asString(),         "Unspecified");
+	EXPECT_EQ(chanAttrs[1]["PinholeSizeAiry"].asString(),     "1");
+	EXPECT_EQ(chanAttrs[0]["AcquisitionMode"].asString(),     "LaserScanningConfocalMicroscopy");
 
 
 }
