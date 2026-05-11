@@ -241,34 +241,6 @@ std::string CVScene::toString() const {
     return os.str();
 }
 
-int slideio::CVScene::defineChannelAttribute(const std::string &attributeName)
-{
-    int attributeIndex = getChannelAttributeIndex(attributeName);
-    if (attributeIndex == -1) {
-        m_channelAttributeNames.push_back(attributeName);
-        attributeIndex = static_cast<int>(m_channelAttributeNames.size() - 1);
-        if(m_channelAttributes.size() <= getNumChannels()) {
-            m_channelAttributes.resize(getNumChannels());
-        }
-        for(auto& channelAttributes : m_channelAttributes) {
-            if(channelAttributes.size() <= attributeIndex) {
-                channelAttributes.resize(attributeIndex + 1);
-            }
-        }
-    }
-    return attributeIndex;
-}
-
-int slideio::CVScene::getChannelAttributeIndex(const std::string &attributeName) const
-{
-    int attributeIndex = -1;
-    const auto it = std::find(m_channelAttributeNames.begin(), m_channelAttributeNames.end(), attributeName);
-    if (it != m_channelAttributeNames.end()) {
-        attributeIndex = static_cast<int>(std::distance(m_channelAttributeNames.begin(), it));
-    }
-    return attributeIndex;
-}
-
 void slideio::CVScene::setChannelAttribute(int channelIndex, const std::string &attributeName, const std::string &attributeValue)
 {
     if(channelIndex < 0 || channelIndex >= getNumChannels()) {
@@ -308,45 +280,6 @@ void slideio::CVScene::setChannelAttribute(int channelIndex, const std::string &
             << " Expected range: [0," << getNumChannels() << ")";
     }
     growToChannel(m_channelAttributesJson, channelIndex)[attributeName] = attributeValue;
-}
-
-std::string slideio::CVScene::getChannelAttributeValue(int channelIndex, const std::string &attributeName) const
-{
-    if(channelIndex < 0 || channelIndex >= getNumChannels()) {
-        RAISE_RUNTIME_ERROR << "Invalid channel index or not initialized attribute collection: " << channelIndex
-            << " Expected range: [0," << getNumChannels() << ")";
-    }
-    const int attributeIndex = getChannelAttributeIndex(attributeName);
-    if(attributeIndex == -1) {
-        RAISE_RUNTIME_ERROR << "Attribute not found: " << attributeName;
-    }
-    const auto& channelAttributes = m_channelAttributes[channelIndex];
-    if(channelAttributes.size() <= attributeIndex) {
-        RAISE_RUNTIME_ERROR << "Invalid attribute index: " << attributeIndex
-            << " Expected range: [0," << channelAttributes.size() << ")";
-    }
-    return channelAttributes[attributeIndex];
-}
-
-const std::string& CVScene::getChannelAttributeValue(int channelIndex, int attributeIndex) const {
-    if(channelIndex < 0 || channelIndex >= getNumChannels()) {
-        RAISE_RUNTIME_ERROR << "Invalid channel index or not initialized attribute collection: " << channelIndex
-            << " Expected range: [0," << getNumChannels() << ")";
-    }
-    const auto& channelAttributes = m_channelAttributes[channelIndex];
-    if(attributeIndex < 0 || attributeIndex >= channelAttributes.size()) {
-        RAISE_RUNTIME_ERROR << "Invalid attribute index: " << attributeIndex
-            << " Expected range: [0," << channelAttributes.size() << ")";
-    }
-	return channelAttributes[attributeIndex];
-}
-
-const std::string& CVScene::getChannelAttributeName(int index) const {
-    if(index < 0 || index >= m_channelAttributeNames.size()) {
-        RAISE_RUNTIME_ERROR << "Invalid channel attribute index: " << index
-            << " Expected range: [0," << m_channelAttributeNames.size() << ")";
-    }
-	return m_channelAttributeNames[index];
 }
 
 void CVScene::buildMetadataTree(void* rootHandle) const

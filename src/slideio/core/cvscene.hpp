@@ -204,10 +204,6 @@ namespace slideio
         std::string toString() const;
 		/**@brief returns metadata format of the image*/
 		virtual MetadataFormat getMetadataFormat() const { return m_metadataFormat; }
-        /**brief defines a new attribute for channel. Returns attribute index */
-        virtual int defineChannelAttribute(const std::string& attributeName);
-        /**@brief return index of a channel attribute by name */
-        virtual int getChannelAttributeIndex(const std::string& attributeName) const;
         /**@brief adds a new attribute to channels */
         virtual void setChannelAttribute(int channelIndex, const std::string& attributeName, const std::string& attributeValues);
         /**@brief adds a string-literal attribute to a channel */
@@ -218,16 +214,6 @@ namespace slideio
         virtual void setChannelAttribute(int channelIndex, const std::string& attributeName, int64_t attributeValue);
         /**@brief adds a floating-point attribute to a channel */
         virtual void setChannelAttribute(int channelIndex, const std::string& attributeName, double attributeValue);
-        /**@brief returns channel attribute value by channel index and attribute name */
-        virtual std::string getChannelAttributeValue(int channelIndex, const std::string& attributeName) const;
-		/**@brief returns channel attribute value by channel index and attribute index */
-		virtual const std::string& getChannelAttributeValue(int channelIndex, int attributeIndex) const;
-		/**@brief returns channel attribute name */
-        virtual const std::string& getChannelAttributeName(int index) const;
-         /**@brief returns number ofchannel attributes */
-        virtual int getNumChannelAttributes() const {
-            return static_cast<int>(m_channelAttributeNames.size());
-        }
         /**@brief returns channel attributes as a Metadata tree.
          *
          * Always an Array of length getNumChannels(). Each element is an
@@ -255,8 +241,6 @@ namespace slideio
         mutable std::mutex m_readBlockMutex;
         std::string m_rawMetadata;
         MetadataFormat m_metadataFormat = MetadataFormat::None;
-        std::vector<std::string> m_channelAttributeNames;
-        std::vector<std::vector<std::string>> m_channelAttributes;
         nlohmann::json m_channelAttributesJson;
 
     private:
