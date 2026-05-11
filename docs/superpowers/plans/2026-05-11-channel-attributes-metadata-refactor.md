@@ -268,18 +268,9 @@ Open `src/tests/main/test_channel_attributes.cpp`. The fixture and `SetUp()` (li
 
 Replace the test bodies as follows. For each replacement, keep the `TEST_F(ChannelAttributesTest, ...)` header line; replace only the body. Where a test was asserting on the old API, rewrite to assert against the tree.
 
-Replace `DefineChannelAttribute` (lines 23–38) with:
+**Note on lazy-build freeze:** `getChannelAttributes()` caches on first call (via `std::call_once`). Within a single test, call `getChannelAttributes()` **at most once**, after all setter calls. Tests that need to read between setter batches must re-create the scene (see `OverwriteAttributeValue` below).
 
-```cpp
-TEST_F(ChannelAttributesTest, DefineChannelAttribute) {
-    scene->defineChannelAttribute("wavelength");
-    EXPECT_EQ(scene->getChannelAttributes()[0].size(), 0u);   // defined but no value set
-    scene->defineChannelAttribute("exposure_time");
-    scene->defineChannelAttribute("wavelength");              // re-define is a no-op
-    scene->setChannelAttribute(0, "wavelength", "488nm");
-    EXPECT_EQ(scene->getChannelAttributes()[0]["wavelength"].asString(), "488nm");
-}
-```
+Delete `DefineChannelAttribute` (lines 23–38) entirely — `defineChannelAttribute` itself goes away in Task 10 and the "re-define is a no-op" semantic only describes the legacy indexed API.
 
 Delete `GetChannelAttributeIndex` (lines 40–53) entirely — the indexed lookup is gone in the new API.
 
@@ -365,17 +356,7 @@ TEST_F(ChannelAttributesTest, MultipleChannelsDifferentAttributes) {
 }
 ```
 
-Replace `EmptyAttributeValues` (lines 157–168) with:
-
-```cpp
-TEST_F(ChannelAttributesTest, EmptyAttributeValues) {
-    scene->setChannelAttribute(0, "wavelength", "");
-    scene->setChannelAttribute(0, "comment",    "");
-    const slideio::Metadata chan0 = scene->getChannelAttributes()[0];
-    EXPECT_EQ(chan0["wavelength"].asString(), "");
-    EXPECT_EQ(chan0["comment"].asString(),    "");
-}
-```
+Delete `EmptyAttributeValues` (lines 157–168) entirely. The bridge synthesis added in Task 1 skips slots where the stored string is empty (because legacy `defineChannelAttribute` pre-fills rows with `""`), so explicitly-empty values cannot be round-tripped through the new accessor during the bridge. Task 8 re-adds an `EmptyAttributeValues` test once the storage is `nlohmann::json` and the distinction is clean.
 
 Replace `OverwriteAttributeValue` (lines 170–180) with:
 
@@ -712,14 +693,30 @@ python3 install.py -a build -c release
 ```
 Expected: build succeeds.
 
-- [ ] **Step 6: Run the channel-attribute test suite end-to-end**
+- [ ] **Step 6: Re-add the `EmptyAttributeValues` test**
+
+The bridge synthesis in Task 1 dropped explicitly-empty string values, so an `EmptyAttributeValues` test was deleted in Task 4. With the json-backed storage in this task, empty strings round-trip cleanly. Append:
+
+```cpp
+TEST_F(ChannelAttributesTest, EmptyAttributeValues) {
+    scene->setChannelAttribute(0, "wavelength", "");
+    scene->setChannelAttribute(0, "comment",    "");
+    const slideio::Metadata chan0 = scene->getChannelAttributes()[0];
+    EXPECT_TRUE(chan0.contains("wavelength"));
+    EXPECT_TRUE(chan0.contains("comment"));
+    EXPECT_EQ(chan0["wavelength"].asString(), "");
+    EXPECT_EQ(chan0["comment"].asString(),    "");
+}
+```
+
+- [ ] **Step 7: Run the channel-attribute test suite end-to-end**
 
 ```bash
 ./build/release/bin/slideio_tests --gtest_filter='ChannelAttributesTest.*'
 ```
-Expected: all pass against the new json-backed storage.
+Expected: all pass against the new json-backed storage, including the newly-restored `EmptyAttributeValues`.
 
-- [ ] **Step 7: Run the broader driver tests that touch attributes**
+- [ ] **Step 8: Run the broader driver tests that touch attributes**
 
 ```bash
 ./build/release/bin/slideio_tests              --gtest_filter='*Channel*Attribut*'
@@ -728,10 +725,11 @@ Expected: all pass against the new json-backed storage.
 ```
 Expected: all pass (or are skipped because the test image is absent — neither outcome is a regression).
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
-git add src/slideio/core/cvscene.hpp src/slideio/core/cvscene.cpp
+git add src/slideio/core/cvscene.hpp src/slideio/core/cvscene.cpp \
+        src/tests/main/test_channel_attributes.cpp
 git commit -m "core: back channel attributes with nlohmann::json storage"
 ```
 
