@@ -48,19 +48,16 @@ MetadataFormat CVSlide::recognizeMetadataFormat(const std::string& metadata) {
     return MetadataFormat::Text;
 }
 
-void CVSlide::buildMetadataTree(void* rootHandle) const
+MetadataBuilder CVSlide::buildMetadataTree() const
 {
-    detail::buildDefaultMetadataTree(detail::asJson(rootHandle),
-                                     m_rawMetadata, m_metadataFormat);
+    return detail::makeDefaultMetadataBuilder(m_rawMetadata, m_metadataFormat);
 }
 
 const Metadata& CVSlide::getMetadata() const
 {
     std::call_once(m_metadataOnce, [this]
     {
-        nlohmann::json root;
-        buildMetadataTree(&root);
-        m_metadata = detail::makeMetadataFromJson(std::move(root));
+        m_metadata = buildMetadataTree().freeze();
     });
     return m_metadata;
 }

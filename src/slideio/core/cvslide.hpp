@@ -80,7 +80,7 @@ namespace slideio
 		 /**@brief The method returns a string containing serialized metadata of the slide. */
          std::string toString() const;
     protected:
-        virtual void buildMetadataTree(void* rootHandle) const;
+        virtual MetadataBuilder buildMetadataTree() const;
 
     protected:
         std::string m_rawMetadata;

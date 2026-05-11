@@ -153,7 +153,7 @@ void SVSSlide::log()
     SLIDEIO_LOG(INFO) << "filePath:" << m_filePath << std::endl;
 }
 
-void SVSSlide::buildMetadataTree(void* rootHandle) const
+MetadataBuilder SVSSlide::buildMetadataTree() const
 {
-    detail::asJson(rootHandle) = SVSTools::parseAperioMetadata(m_rawMetadata);
+    return detail::builderFromJson(SVSTools::parseAperioMetadata(m_rawMetadata));
 }
