@@ -3,7 +3,6 @@
 // of this distribution and at http://slideio.com/license.html.
 #include "slideio/core/cvslide.hpp"
 #include "slideio/core/metadata_internal.hpp"
-#include <nlohmann/json.hpp>
 
 using namespace slideio;
 

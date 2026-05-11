@@ -41,7 +41,7 @@ target_link_libraries(${LIBRARY_NAME} PRIVATE SQLite::SQLite3)
 target_link_libraries(${LIBRARY_NAME} PRIVATE opencv::opencv)
 target_link_libraries(${LIBRARY_NAME} PRIVATE ZLIB::ZLIB)
 target_link_libraries(${LIBRARY_NAME} PRIVATE tinyxml2::tinyxml2)
-target_link_libraries(${LIBRARY_NAME} PUBLIC nlohmann_json::nlohmann_json)
+target_link_libraries(${LIBRARY_NAME} PRIVATE nlohmann_json::nlohmann_json)
 target_link_libraries(${LIBRARY_NAME} PRIVATE icu::icu)
 
 SOURCE_GROUP_BY_FOLDER(SOURCE_FILES)

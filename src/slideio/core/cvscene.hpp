@@ -8,7 +8,6 @@
 #include "slideio/base/resolution.hpp"
 #include "slideio/base/slideio_enums.hpp"
 #include "slideio/core/metadata.hpp"
-#include <nlohmann/json.hpp>
 #include <opencv2/core.hpp>
 #include <vector>
 #include <string>
@@ -230,7 +229,7 @@ namespace slideio
          *
          * The default implementation handles MetadataFormat::{None,Text,JSON,XML}.
          * Drivers that need semantic structure override and return a
-         * MetadataBuilder. To wrap an existing nlohmann::json tree, use
+         * MetadataBuilder. To wrap an existing JSON tree, use
          * slideio::detail::builderFromJson from "slideio/core/metadata_internal.hpp".
          */
         virtual MetadataBuilder buildMetadataTree() const;
