@@ -14,17 +14,6 @@
 
 using namespace slideio;
 
-namespace {
-    nlohmann::json& growToChannel(nlohmann::json& storage, int channelIndex) {
-        if (!storage.is_array()) {
-            storage = nlohmann::json::array();
-        }
-        while (static_cast<int>(storage.size()) <= channelIndex) {
-            storage.push_back(nlohmann::json::object());
-        }
-        return storage[channelIndex];
-    }
-}
 
 std::string CVScene::getChannelName(int /*channel*/) const
 {
@@ -247,15 +236,16 @@ void slideio::CVScene::setChannelAttribute(int channelIndex, const std::string &
         RAISE_RUNTIME_ERROR << "Invalid channel index: " << channelIndex
             << " Expected range: [0," << getNumChannels() << ")";
     }
-    growToChannel(m_channelAttributesJson, channelIndex)[attributeName] = attributeValue;
+    m_channelAttrs[static_cast<size_t>(channelIndex)][attributeName].set(attributeValue);
 }
 
 void slideio::CVScene::setChannelAttribute(int channelIndex, const std::string &attributeName, const char* attributeValue)
 {
-    if (attributeValue == nullptr) {
-        RAISE_RUNTIME_ERROR << "setChannelAttribute: attributeValue must not be null";
+    if(channelIndex < 0 || channelIndex >= getNumChannels()) {
+        RAISE_RUNTIME_ERROR << "Invalid channel index: " << channelIndex
+            << " Expected range: [0," << getNumChannels() << ")";
     }
-    setChannelAttribute(channelIndex, attributeName, std::string(attributeValue));
+    m_channelAttrs[static_cast<size_t>(channelIndex)][attributeName].set(attributeValue);
 }
 
 void slideio::CVScene::setChannelAttribute(int channelIndex, const std::string &attributeName, bool attributeValue)
@@ -264,7 +254,7 @@ void slideio::CVScene::setChannelAttribute(int channelIndex, const std::string &
         RAISE_RUNTIME_ERROR << "Invalid channel index: " << channelIndex
             << " Expected range: [0," << getNumChannels() << ")";
     }
-    growToChannel(m_channelAttributesJson, channelIndex)[attributeName] = attributeValue;
+    m_channelAttrs[static_cast<size_t>(channelIndex)][attributeName].set(attributeValue);
 }
 
 void slideio::CVScene::setChannelAttribute(int channelIndex, const std::string &attributeName, int64_t attributeValue)
@@ -273,7 +263,7 @@ void slideio::CVScene::setChannelAttribute(int channelIndex, const std::string &
         RAISE_RUNTIME_ERROR << "Invalid channel index: " << channelIndex
             << " Expected range: [0," << getNumChannels() << ")";
     }
-    growToChannel(m_channelAttributesJson, channelIndex)[attributeName] = attributeValue;
+    m_channelAttrs[static_cast<size_t>(channelIndex)][attributeName].set(attributeValue);
 }
 
 void slideio::CVScene::setChannelAttribute(int channelIndex, const std::string &attributeName, double attributeValue)
@@ -282,7 +272,7 @@ void slideio::CVScene::setChannelAttribute(int channelIndex, const std::string &
         RAISE_RUNTIME_ERROR << "Invalid channel index: " << channelIndex
             << " Expected range: [0," << getNumChannels() << ")";
     }
-    growToChannel(m_channelAttributesJson, channelIndex)[attributeName] = attributeValue;
+    m_channelAttrs[static_cast<size_t>(channelIndex)][attributeName].set(attributeValue);
 }
 
 void CVScene::buildMetadataTree(void* rootHandle) const
@@ -307,13 +297,11 @@ const Metadata& CVScene::getChannelAttributes() const
     std::call_once(m_channelAttrsOnce, [this]
     {
         const int numChannels = getNumChannels();
-        nlohmann::json root = m_channelAttributesJson.is_array()
-                                  ? m_channelAttributesJson
-                                  : nlohmann::json::array();
-        while (static_cast<int>(root.size()) < numChannels) {
-            root.push_back(nlohmann::json::object());
+        MetadataBuilder padded = m_channelAttrs;             // deep top-level copy
+        for (int i = 0; i < numChannels; ++i) {
+            padded[static_cast<size_t>(i)].makeObject();      // ensure slot exists
         }
-        m_channelAttributesMeta = detail::makeMetadataFromJson(std::move(root));
+        m_channelAttributesMeta = padded.freeze();
     });
     return m_channelAttributesMeta;
 }

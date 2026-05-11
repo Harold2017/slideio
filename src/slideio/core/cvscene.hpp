@@ -241,7 +241,7 @@ namespace slideio
         mutable std::mutex m_readBlockMutex;
         std::string m_rawMetadata;
         MetadataFormat m_metadataFormat = MetadataFormat::None;
-        nlohmann::json m_channelAttributesJson;
+        MetadataBuilder m_channelAttrs;
 
     private:
         mutable std::once_flag m_metadataOnce;
