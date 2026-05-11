@@ -93,11 +93,12 @@ namespace slideio
         // (e.g. operator[](index) on an Object or scalar node).
         MetadataBuilder operator[](size_t index);
 
-        // Ensures the current node is an empty Object. Idempotent if already
-        // an Object; replaces a scalar/Null/Array otherwise.
+        // Ensures the current node is an Object. Idempotent if already
+        // an Object (content preserved); replaces a scalar/Null/Array otherwise.
         void makeObject();
 
-        // Ensures the current node is an empty Array.
+        // Ensures the current node is an Array. Idempotent if already
+        // an Array (content preserved); replaces a scalar/Null/Object otherwise.
         void makeArray();
 
         // Inspection.

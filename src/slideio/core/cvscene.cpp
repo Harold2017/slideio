@@ -8,7 +8,6 @@
 #include <mutex>
 #include "slideio/base/exceptions.hpp"
 #include "slideio/core/metadata_internal.hpp"
-#include <nlohmann/json.hpp>
 #include "cvscene.hpp"
 
 
