@@ -63,3 +63,43 @@ TEST(MetadataBuilder, SetConstCharNullThrows)
     MetadataBuilder b;
     EXPECT_THROW(b.set(static_cast<const char*>(nullptr)), slideio::RuntimeError);
 }
+
+TEST(MetadataBuilder, ObjectKeyAutoCreate)
+{
+    MetadataBuilder b;
+    b["wavelength"].set(std::string("488nm"));
+    b["exposure"].set(std::string("100ms"));
+
+    Metadata m = b.freeze();
+    EXPECT_EQ(m.type(), Metadata::Type::Object);
+    EXPECT_TRUE(m.contains("wavelength"));
+    EXPECT_TRUE(m.contains("exposure"));
+    EXPECT_EQ(m["wavelength"].asString(), "488nm");
+    EXPECT_EQ(m["exposure"].asString(),   "100ms");
+}
+
+TEST(MetadataBuilder, MakeObjectIdempotent)
+{
+    MetadataBuilder b;
+    b.makeObject();
+    EXPECT_TRUE(b.isObject());
+
+    b["a"].set(std::string("1"));
+    b.makeObject();                                  // idempotent — must not clobber "a"
+    EXPECT_TRUE(b.isObject());
+
+    Metadata m = b.freeze();
+    EXPECT_TRUE(m.contains("a"));
+    EXPECT_EQ(m["a"].asString(), "1");
+}
+
+TEST(MetadataBuilder, MakeObjectOnScalarReplaces)
+{
+    MetadataBuilder b;
+    b.set(std::string("scalar"));
+    b.makeObject();                                  // replaces the scalar
+
+    Metadata m = b.freeze();
+    EXPECT_EQ(m.type(), Metadata::Type::Object);
+    EXPECT_EQ(m.size(), 0u);
+}

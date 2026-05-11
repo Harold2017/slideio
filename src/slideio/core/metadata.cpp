@@ -221,9 +221,36 @@ namespace slideio
         *m_impl->view = std::string(value);
     }
 
+    MetadataBuilder MetadataBuilder::operator[](const std::string& key)
+    {
+        if (m_impl->view->is_null()) {
+            *m_impl->view = nlohmann::json::object();
+        }
+        if (!m_impl->view->is_object()) {
+            RAISE_RUNTIME_ERROR << "MetadataBuilder::operator[](key): current node is not an object";
+        }
+        nlohmann::json& child = (*m_impl->view)[key];
+        auto childImpl = std::make_shared<Impl>();
+        childImpl->root = m_impl->root;
+        childImpl->view = &child;
+        return MetadataBuilder(std::move(childImpl));
+    }
+
+    void MetadataBuilder::makeObject()
+    {
+        if (!m_impl->view->is_object()) {
+            *m_impl->view = nlohmann::json::object();
+        }
+    }
+
     bool MetadataBuilder::isNull() const
     {
         return m_impl->view->is_null();
+    }
+
+    bool MetadataBuilder::isObject() const
+    {
+        return m_impl->view->is_object();
     }
 
     Metadata MetadataBuilder::freeze() const

@@ -79,8 +79,20 @@ namespace slideio
         void set(double value);
         void set(const char* value);
 
+        // Navigation. Returns a sub-builder sharing root storage with this one.
+        // Auto-creates and coerces: operator[](key) on a Null node turns it into
+        // an Object; on an Object node it returns a sub-view (auto-creating the
+        // key with Null if absent). Throws slideio::RuntimeError on type mismatch
+        // (e.g. operator[](key) on an Array or scalar node).
+        MetadataBuilder operator[](const std::string& key);
+
+        // Ensures the current node is an empty Object. Idempotent if already
+        // an Object; replaces a scalar/Null/Array otherwise.
+        void makeObject();
+
         // Inspection.
         bool isNull() const;
+        bool isObject() const;
 
         // Snapshot the current state into an immutable Metadata.
         Metadata freeze() const;
