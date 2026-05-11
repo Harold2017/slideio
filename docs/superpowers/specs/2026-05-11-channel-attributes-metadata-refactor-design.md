@@ -116,15 +116,24 @@ Channel attributes stay a **dedicated method**, not folded into the
   methods (lines 279–282) with one `getChannelAttributes()`.
 - `src/slideio/slideio/scene.cpp` — same on the implementation side
   (lines 329–343).
-- `src/slideio/drivers/czi/cziscene.cpp:708` — call site of
-  `setChannelAttribute` unchanged in shape; drop any
-  `defineChannelAttribute` precursor call if one exists.
+- `src/slideio/drivers/czi/cziscene.cpp:708` — producer call site of
+  `setChannelAttribute`; signature unchanged for the `(int, string, string)`
+  overload, no driver edit required.
 - `src/slideio/drivers/ome-tiff/otscene.cpp:267` — same.
-- `src/tests/main/test_channel_attributes.cpp` — rewrite around the new
-  API; the existing test suite covers the same semantic ground (define,
-  set, get by name, get by index, invalid channel index, non-existent
-  attribute, overwrite, multiple channels), all expressible in terms of
-  the new tree.
+- `src/slideio/converter/tiffconverter.cpp:186-188` — **production consumer**.
+  Currently iterates `getNumChannelAttributes()` and reads via index using
+  `getChannelAttributeName(idx)` + `getChannelAttributeValue(channel, idx)`.
+  Migrates to walking `getChannelAttributes()[channel].keys()` and indexing
+  by name.
+- `src/tests/main/test_channel_attributes.cpp` — rewrite around the new API;
+  covers same ground (set, get by name, invalid channel index, non-existent
+  attribute, overwrite, multiple channels) plus new typed-value cases.
+- `src/tests/main/test_czi_driver.cpp:675-684` — migrate channel-attribute
+  assertions.
+- `src/tests/converter/test_converter.cpp:230-238` — same.
+- `src/tests/ometiff/test_ometiff_driver.cpp:690-733` — `channelAttributes`
+  test currently uses both name- and index-based lookups; rewrite to use
+  the new tree API directly.
 
 ## Out of scope
 
