@@ -688,48 +688,49 @@ TEST_F(OTImageDriverTests, sceneWithPixeltype) {
 }
 
 TEST_F(OTImageDriverTests, channelAttributes) {
-	std::string filePath = TestTools::getFullTestImagePath("ometiff", "private/test.ome.tif");
+    std::string filePath = TestTools::getFullTestImagePath("ometiff", "private/test.ome.tif");
     OTImageDriver driver;
-	std::shared_ptr<CVSlide> slide = driver.openFile(filePath);
+    std::shared_ptr<CVSlide> slide = driver.openFile(filePath);
     ASSERT_TRUE(slide != nullptr);
-	auto scene = slide->getScene(0);
-	const int numAtts = scene->getNumChannelAttributes();
-	const int numChannels = scene->getNumChannels();
-	ASSERT_EQ(numAtts, 6);
-	typedef std::tuple<std::string, std::vector<std::string>> AttInfo;
-	std::vector<AttInfo> expectedAttNames = {
-		{"ID", {"Channel:0:0", "Channel:0:1","Channel:0:2","Channel:0:3",
-		    "Channel:0:4","Channel:0:5", "Channel:0:6","Channel:0:7","Channel:0:8",
-		    "Channel:0:9","Channel:0:10","Channel:0:11", "Channel:0:12","Channel:0:13",
-		    "Channel:0:14","Channel:0:15"}},
-		{"SamplesPerPixel", {"1","1","1","1","1",
-		    "1","1","1","1","1",
-		    "1","1","1","1","1"}},
-		{"Name", {"DAPI", "CD8", "CD4", "CD11c", "CD68",
-		    "DAPI2", "CD11b", "PD-1", "CD56", "CD20",
-		    "DAPI3", "CD3", "CD14","CD206", "CK"}},
-		{"Color", {"65535","-10092289", "-3407617", "-872480513", "1711210751",
-		    "65535", "16738047", "16763903", "13369343", "6750207",
-		    "65535", "1694564351", "-872349697", "-16724993", "-16750849"  }},
-		{"ContrastMethod", {"Fluorescence", "Fluorescence", "Fluorescence", "Fluorescence", "Fluorescence",
-		    "Fluorescence", "Fluorescence", "Fluorescence", "Fluorescence", "Fluorescence", 
-		    "Fluorescence", "Fluorescence", "Fluorescence", "Fluorescence", "Fluorescence"}},
-		{"EmissionWavelength", {"440", "371", "392", "413", "434",
-		    "440", "476", "497", "518", "539",
-		    "440", "581","602", "623", "645"}}
-	};
-	for (int attIndex = 0; attIndex < numAtts; ++attIndex) {
-		const std::string& expectedAttName = std::get<0>(expectedAttNames[attIndex]);
-		const std::vector<std::string>& expectedValues = std::get<1>(expectedAttNames[attIndex]);
-		std::string attName = scene->getChannelAttributeName(attIndex);
-		const int attIndexScene = scene->getChannelAttributeIndex(attName);
-		ASSERT_GE(attIndexScene, 0);
-		for (int channel = 0; channel < numChannels; ++channel) {
-			const std::string& expectedValue = expectedValues[channel];
-			const std::string& value = scene->getChannelAttributeValue( channel, attIndexScene);
-			EXPECT_EQ(value, expectedValue);
-		}
-	}
+    auto scene = slide->getScene(0);
+    const int numChannels = scene->getNumChannels();
+    const slideio::Metadata& chanAttrs = scene->getChannelAttributes();
+    ASSERT_EQ(static_cast<int>(chanAttrs.size()), numChannels);
+    EXPECT_EQ(chanAttrs[0].size(), 6u);
+
+    typedef std::tuple<std::string, std::vector<std::string>> AttInfo;
+    std::vector<AttInfo> expectedAttNames = {
+        {"ID", {"Channel:0:0", "Channel:0:1","Channel:0:2","Channel:0:3",
+            "Channel:0:4","Channel:0:5", "Channel:0:6","Channel:0:7","Channel:0:8",
+            "Channel:0:9","Channel:0:10","Channel:0:11", "Channel:0:12","Channel:0:13",
+            "Channel:0:14","Channel:0:15"}},
+        {"SamplesPerPixel", {"1","1","1","1","1",
+            "1","1","1","1","1",
+            "1","1","1","1","1"}},
+        {"Name", {"DAPI", "CD8", "CD4", "CD11c", "CD68",
+            "DAPI2", "CD11b", "PD-1", "CD56", "CD20",
+            "DAPI3", "CD3", "CD14","CD206", "CK"}},
+        {"Color", {"65535","-10092289", "-3407617", "-872480513", "1711210751",
+            "65535", "16738047", "16763903", "13369343", "6750207",
+            "65535", "1694564351", "-872349697", "-16724993", "-16750849"  }},
+        {"ContrastMethod", {"Fluorescence", "Fluorescence", "Fluorescence", "Fluorescence", "Fluorescence",
+            "Fluorescence", "Fluorescence", "Fluorescence", "Fluorescence", "Fluorescence",
+            "Fluorescence", "Fluorescence", "Fluorescence", "Fluorescence", "Fluorescence"}},
+        {"EmissionWavelength", {"440", "371", "392", "413", "434",
+            "440", "476", "497", "518", "539",
+            "440", "581","602", "623", "645"}}
+    };
+
+    for (const AttInfo& info : expectedAttNames) {
+        const std::string& expectedAttName = std::get<0>(info);
+        const std::vector<std::string>& expectedValues = std::get<1>(info);
+        for (int channel = 0; channel < numChannels && channel < static_cast<int>(expectedValues.size()); ++channel) {
+            ASSERT_TRUE(chanAttrs[channel].contains(expectedAttName))
+                << "Channel " << channel << " missing attribute " << expectedAttName;
+            EXPECT_EQ(chanAttrs[channel][expectedAttName].asString(), expectedValues[channel])
+                << "Channel " << channel << " attribute " << expectedAttName;
+        }
+    }
 }
 
 TEST_F(OTImageDriverTests, readBlockBigEndian) {
