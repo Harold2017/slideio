@@ -210,6 +210,14 @@ namespace slideio
         virtual int getChannelAttributeIndex(const std::string& attributeName) const;
         /**@brief adds a new attribute to channels */
         virtual void setChannelAttribute(int channelIndex, const std::string& attributeName, const std::string& attributeValues);
+        /**@brief adds a string-literal attribute to a channel */
+        virtual void setChannelAttribute(int channelIndex, const std::string& attributeName, const char* attributeValue);
+        /**@brief adds a boolean attribute to a channel */
+        virtual void setChannelAttribute(int channelIndex, const std::string& attributeName, bool attributeValue);
+        /**@brief adds an integer attribute to a channel */
+        virtual void setChannelAttribute(int channelIndex, const std::string& attributeName, int64_t attributeValue);
+        /**@brief adds a floating-point attribute to a channel */
+        virtual void setChannelAttribute(int channelIndex, const std::string& attributeName, double attributeValue);
         /**@brief returns channel attribute value by channel index and attribute name */
         virtual std::string getChannelAttributeValue(int channelIndex, const std::string& attributeName) const;
 		/**@brief returns channel attribute value by channel index and attribute index */

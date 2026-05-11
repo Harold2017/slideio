@@ -129,3 +129,24 @@ TEST_F(ChannelAttributesTest, EmptyAttributeValues) {
     EXPECT_EQ(chan0["wavelength"].asString(), "");
     EXPECT_EQ(chan0["comment"].asString(),    "");
 }
+
+TEST_F(ChannelAttributesTest, TypedAttributeValues) {
+    scene->setChannelAttribute(0, "wavelength_nm", static_cast<int64_t>(488));
+    scene->setChannelAttribute(0, "exposure_s",    0.1);
+    scene->setChannelAttribute(0, "active",        true);
+    scene->setChannelAttribute(0, "lookup",        "488nm");          // const char* overload
+    const std::string s = "manual";
+    scene->setChannelAttribute(0, "mode",          s);                // string overload
+
+    const slideio::Metadata chan0 = scene->getChannelAttributes()[0];
+    EXPECT_EQ(chan0["wavelength_nm"].type(), slideio::Metadata::Type::Int);
+    EXPECT_EQ(chan0["wavelength_nm"].asInt(), 488);
+    EXPECT_EQ(chan0["exposure_s"].type(),    slideio::Metadata::Type::Double);
+    EXPECT_DOUBLE_EQ(chan0["exposure_s"].asDouble(), 0.1);
+    EXPECT_EQ(chan0["active"].type(),        slideio::Metadata::Type::Bool);
+    EXPECT_TRUE(chan0["active"].asBool());
+    EXPECT_EQ(chan0["lookup"].type(),        slideio::Metadata::Type::String);
+    EXPECT_EQ(chan0["lookup"].asString(),    "488nm");
+    EXPECT_EQ(chan0["mode"].type(),          slideio::Metadata::Type::String);
+    EXPECT_EQ(chan0["mode"].asString(),      "manual");
+}

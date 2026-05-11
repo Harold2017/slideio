@@ -14,6 +14,18 @@
 
 using namespace slideio;
 
+namespace {
+    nlohmann::json& growToChannel(nlohmann::json& storage, int channelIndex) {
+        if (!storage.is_array()) {
+            storage = nlohmann::json::array();
+        }
+        while (static_cast<int>(storage.size()) <= channelIndex) {
+            storage.push_back(nlohmann::json::object());
+        }
+        return storage[channelIndex];
+    }
+}
+
 std::string CVScene::getChannelName(int /*channel*/) const
 {
     return "";
@@ -263,13 +275,39 @@ void slideio::CVScene::setChannelAttribute(int channelIndex, const std::string &
         RAISE_RUNTIME_ERROR << "Invalid channel index: " << channelIndex
             << " Expected range: [0," << getNumChannels() << ")";
     }
-    if (!m_channelAttributesJson.is_array()) {
-        m_channelAttributesJson = nlohmann::json::array();
+    growToChannel(m_channelAttributesJson, channelIndex)[attributeName] = attributeValue;
+}
+
+void slideio::CVScene::setChannelAttribute(int channelIndex, const std::string &attributeName, const char* attributeValue)
+{
+    setChannelAttribute(channelIndex, attributeName, std::string(attributeValue));
+}
+
+void slideio::CVScene::setChannelAttribute(int channelIndex, const std::string &attributeName, bool attributeValue)
+{
+    if(channelIndex < 0 || channelIndex >= getNumChannels()) {
+        RAISE_RUNTIME_ERROR << "Invalid channel index: " << channelIndex
+            << " Expected range: [0," << getNumChannels() << ")";
     }
-    while (static_cast<int>(m_channelAttributesJson.size()) <= channelIndex) {
-        m_channelAttributesJson.push_back(nlohmann::json::object());
+    growToChannel(m_channelAttributesJson, channelIndex)[attributeName] = attributeValue;
+}
+
+void slideio::CVScene::setChannelAttribute(int channelIndex, const std::string &attributeName, int64_t attributeValue)
+{
+    if(channelIndex < 0 || channelIndex >= getNumChannels()) {
+        RAISE_RUNTIME_ERROR << "Invalid channel index: " << channelIndex
+            << " Expected range: [0," << getNumChannels() << ")";
     }
-    m_channelAttributesJson[channelIndex][attributeName] = attributeValue;
+    growToChannel(m_channelAttributesJson, channelIndex)[attributeName] = attributeValue;
+}
+
+void slideio::CVScene::setChannelAttribute(int channelIndex, const std::string &attributeName, double attributeValue)
+{
+    if(channelIndex < 0 || channelIndex >= getNumChannels()) {
+        RAISE_RUNTIME_ERROR << "Invalid channel index: " << channelIndex
+            << " Expected range: [0," << getNumChannels() << ")";
+    }
+    growToChannel(m_channelAttributesJson, channelIndex)[attributeName] = attributeValue;
 }
 
 std::string slideio::CVScene::getChannelAttributeValue(int channelIndex, const std::string &attributeName) const
