@@ -214,3 +214,14 @@ TEST_F(ChannelAttributesTest, GetChannelAttributesTreeShape) {
     EXPECT_EQ(attrs[2].type(), slideio::Metadata::Type::Object);
     EXPECT_EQ(attrs[2].size(), 0u);                           // empty object for unset channel
 }
+
+TEST_F(ChannelAttributesTest, GetChannelAttributesTreeShapeNoAttributes) {
+    // no defineChannelAttribute / setChannelAttribute calls
+    const slideio::Metadata& attrs = scene->getChannelAttributes();
+    ASSERT_EQ(attrs.type(), slideio::Metadata::Type::Array);
+    ASSERT_EQ(attrs.size(), 3u);
+    for (size_t i = 0; i < 3; ++i) {
+        EXPECT_EQ(attrs[i].type(), slideio::Metadata::Type::Object);
+        EXPECT_EQ(attrs[i].size(), 0u);
+    }
+}

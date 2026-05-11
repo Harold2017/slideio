@@ -342,6 +342,11 @@ const Metadata& CVScene::getChannelAttributes() const
             if (ch < static_cast<int>(m_channelAttributes.size())) {
                 const auto& row = m_channelAttributes[ch];
                 for (size_t i = 0; i < row.size() && i < m_channelAttributeNames.size(); ++i) {
+                    // Skip default-empty slots: defineChannelAttribute pre-fills every row
+                    // with "" to keep the vector rectangular. Emit only keys with actual
+                    // values. Side-effect during this bridge phase: explicitly-empty string
+                    // attributes are not surfaced; the limitation lifts in Task 8 when
+                    // storage moves to nlohmann::json.
                     if (!row[i].empty()) {
                         obj[m_channelAttributeNames[i]] = row[i];
                     }

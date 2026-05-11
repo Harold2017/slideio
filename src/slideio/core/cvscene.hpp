@@ -222,9 +222,14 @@ namespace slideio
         /**@brief returns channel attributes as a Metadata tree.
          *
          * Always an Array of length getNumChannels(). Each element is an
-         * Object keyed by attribute name; channels with no attributes get an
-         * empty Object. Built lazily on first call; setters must not be
-         * called after the first read.
+         * Object keyed by attribute name; channels with no attributes get
+         * an empty Object. Built lazily on first call; neither the channel
+         * count nor the attribute values must change after the first read.
+         *
+         * Bridge-phase limitation: explicitly-empty string attributes are
+         * not surfaced through this accessor while the underlying storage
+         * is still vector-of-vector-of-string. The limitation lifts when
+         * the storage swaps to nlohmann::json.
          */
         const Metadata& getChannelAttributes() const;
     protected:
