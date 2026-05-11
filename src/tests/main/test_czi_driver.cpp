@@ -701,3 +701,25 @@ TEST(CZIImageDriver, getDriverId)
 		EXPECT_EQ("CZI", scene->getDriverId());
     }
 }
+
+TEST(CZIImageDriver, openChannelColor)
+{
+    if (!TestTools::isFullTestEnabled())
+    {
+        GTEST_SKIP() << "Skip private test because full dataset is not enabled";
+    }
+    {
+        std::string filePath = TestTools::getFullTestImagePath("czi", u8"openslide/Zeiss-4-Mosaic.czi");
+        slideio::CZIImageDriver driver;
+        std::shared_ptr<slideio::CVSlide> slide = driver.openFile(filePath);
+        int dirCount = slide->getNumScenes();
+        ASSERT_EQ(dirCount, 1);
+        std::shared_ptr<slideio::CVScene> scene = slide->getScene(0);
+        const slideio::Metadata& chanAttrs = scene->getChannelAttributes();
+		ASSERT_EQ(chanAttrs.size(), 3u); // numChannels for this scene
+        EXPECT_TRUE(chanAttrs[0].contains("Color"));
+        EXPECT_EQ(chanAttrs[0]["Color"].asString(), "#FF0000FF");
+        EXPECT_EQ(chanAttrs[1]["Color"].asString(), "#FF00FF00");
+		EXPECT_EQ(chanAttrs[2]["Color"].asString(), "#FFFF0000");
+    }
+}
