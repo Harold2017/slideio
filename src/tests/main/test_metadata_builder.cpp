@@ -144,3 +144,31 @@ TEST(MetadataBuilder, SizeReflectsContainer)
     b["k"].set(std::string("v"));
     EXPECT_EQ(b.size(), 1u);
 }
+
+TEST(MetadataBuilder, OperatorKeyOnArrayThrows)
+{
+    MetadataBuilder b;
+    b.makeArray();
+    EXPECT_THROW(b["k"], slideio::RuntimeError);
+}
+
+TEST(MetadataBuilder, OperatorKeyOnScalarThrows)
+{
+    MetadataBuilder b;
+    b.set(static_cast<int64_t>(42));
+    EXPECT_THROW(b["k"], slideio::RuntimeError);
+}
+
+TEST(MetadataBuilder, OperatorIndexOnObjectThrows)
+{
+    MetadataBuilder b;
+    b.makeObject();
+    EXPECT_THROW(b[size_t{0}], slideio::RuntimeError);
+}
+
+TEST(MetadataBuilder, OperatorIndexOnScalarThrows)
+{
+    MetadataBuilder b;
+    b.set(true);
+    EXPECT_THROW(b[size_t{0}], slideio::RuntimeError);
+}
