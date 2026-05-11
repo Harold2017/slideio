@@ -204,16 +204,6 @@ namespace slideio
         std::string toString() const;
 		/**@brief returns metadata format of the image*/
 		virtual MetadataFormat getMetadataFormat() const { return m_metadataFormat; }
-        /**@brief adds a new attribute to channels */
-        virtual void setChannelAttribute(int channelIndex, const std::string& attributeName, const std::string& attributeValues);
-        /**@brief adds a string-literal attribute to a channel */
-        virtual void setChannelAttribute(int channelIndex, const std::string& attributeName, const char* attributeValue);
-        /**@brief adds a boolean attribute to a channel */
-        virtual void setChannelAttribute(int channelIndex, const std::string& attributeName, bool attributeValue);
-        /**@brief adds an integer attribute to a channel */
-        virtual void setChannelAttribute(int channelIndex, const std::string& attributeName, int64_t attributeValue);
-        /**@brief adds a floating-point attribute to a channel */
-        virtual void setChannelAttribute(int channelIndex, const std::string& attributeName, double attributeValue);
         /**@brief returns channel attributes as a Metadata tree.
          *
          * Always an Array of length getNumChannels(). Each element is an
@@ -223,6 +213,16 @@ namespace slideio
          */
         const Metadata& getChannelAttributes() const;
     protected:
+        /**@brief adds a new attribute to channels */
+        virtual void setChannelAttribute(int channelIndex, const std::string& attributeName, const std::string& attributeValue);
+        /**@brief adds a string-literal attribute to a channel */
+        virtual void setChannelAttribute(int channelIndex, const std::string& attributeName, const char* attributeValue);
+        /**@brief adds a boolean attribute to a channel */
+        virtual void setChannelAttribute(int channelIndex, const std::string& attributeName, bool attributeValue);
+        /**@brief adds an integer attribute to a channel */
+        virtual void setChannelAttribute(int channelIndex, const std::string& attributeName, int64_t attributeValue);
+        /**@brief adds a floating-point attribute to a channel */
+        virtual void setChannelAttribute(int channelIndex, const std::string& attributeName, double attributeValue);
         std::vector<int> getValidChannelIndices(const std::vector<int>& channelIndices);
         void initializeSceneBlock(const cv::Size& blockSize, const std::vector<int>& channelIndices,
                                   cv::OutputArray output) const;

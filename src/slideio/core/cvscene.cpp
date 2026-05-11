@@ -252,6 +252,9 @@ void slideio::CVScene::setChannelAttribute(int channelIndex, const std::string &
 
 void slideio::CVScene::setChannelAttribute(int channelIndex, const std::string &attributeName, const char* attributeValue)
 {
+    if (attributeValue == nullptr) {
+        RAISE_RUNTIME_ERROR << "setChannelAttribute: attributeValue must not be null";
+    }
     setChannelAttribute(channelIndex, attributeName, std::string(attributeValue));
 }
 

@@ -180,10 +180,10 @@ std::string TiffConverter::createOMETiffDescription() const {
 
     int id = 0;
     const auto& sceneChannelRange = m_parameters.getChannelRange();
+    const slideio::Metadata& chanAttrs = m_scene->getChannelAttributes();
     for (int channel = sceneChannelRange.start; channel < sceneChannelRange.end; ++channel) {
         std::string idAttr = std::string("Channel:0:") + std::to_string(id++);
         auto* xmlChannel = doc.NewElement("Channel");
-        const slideio::Metadata& chanAttrs = m_scene->getChannelAttributes();
         const slideio::Metadata chan = chanAttrs[channel];
         for (const std::string& attrName : chan.keys()) {
             std::string attrValue = chan[attrName].asString();

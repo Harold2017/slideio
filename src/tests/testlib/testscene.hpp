@@ -4,6 +4,7 @@
 class TestScene : public slideio::CVScene
 {
 public:
+    using slideio::CVScene::setChannelAttribute;
     TestScene() :
         m_filePath("/path/folder/file.svs"),
         m_rect(0, 0, 100, 100),
