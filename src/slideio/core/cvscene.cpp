@@ -275,19 +275,16 @@ void slideio::CVScene::setChannelAttribute(int channelIndex, const std::string &
     m_channelAttrs[static_cast<size_t>(channelIndex)][attributeName].set(attributeValue);
 }
 
-void CVScene::buildMetadataTree(void* rootHandle) const
+MetadataBuilder CVScene::buildMetadataTree() const
 {
-    detail::buildDefaultMetadataTree(detail::asJson(rootHandle),
-                                     m_rawMetadata, m_metadataFormat);
+    return detail::makeDefaultMetadataBuilder(m_rawMetadata, m_metadataFormat);
 }
 
 const Metadata& CVScene::getMetadata() const
 {
     std::call_once(m_metadataOnce, [this]
     {
-        nlohmann::json root;
-        buildMetadataTree(&root);
-        m_metadata = detail::makeMetadataFromJson(std::move(root));
+        m_metadata = buildMetadataTree().freeze();
     });
     return m_metadata;
 }

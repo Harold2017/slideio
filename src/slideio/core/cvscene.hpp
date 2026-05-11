@@ -226,14 +226,14 @@ namespace slideio
         std::vector<int> getValidChannelIndices(const std::vector<int>& channelIndices);
         void initializeSceneBlock(const cv::Size& blockSize, const std::vector<int>& channelIndices,
                                   cv::OutputArray output) const;
-        /**@brief Driver hook: convert m_rawMetadata into a JSON tree.
+        /**@brief Driver hook: convert m_rawMetadata into a Metadata tree.
          *
          * The default implementation handles MetadataFormat::{None,Text,JSON,XML}.
-         * `rootHandle` is a type-erased pointer to nlohmann::json, valid only for
-         * the duration of the call. Override in drivers that need semantic
-         * structure; cast via slideio::detail::asJson(rootHandle) inside a .cpp
-         * that includes "slideio/core/metadata_internal.hpp". */
-        virtual void buildMetadataTree(void* rootHandle) const;
+         * Drivers that need semantic structure override and return a
+         * MetadataBuilder. To wrap an existing nlohmann::json tree, use
+         * slideio::detail::builderFromJson from "slideio/core/metadata_internal.hpp".
+         */
+        virtual MetadataBuilder buildMetadataTree() const;
 
     protected:
         std::list<std::string> m_auxNames;
