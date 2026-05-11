@@ -151,32 +151,6 @@ namespace slideio
             return Metadata::fromImpl(impl);
         }
 
-        void buildDefaultMetadataTree(nlohmann::json& root,
-                                      const std::string& rawMetadata,
-                                      MetadataFormat fmt)
-        {
-            using nlohmann::json;
-            switch (fmt)
-            {
-            case MetadataFormat::JSON:
-                try { root = json::parse(rawMetadata); }
-                catch (...) {
-                    root = json{{"#error", "invalid json"}};
-                }
-                break;
-            case MetadataFormat::XML:
-                root = xmlStringToJson(rawMetadata);
-                break;
-            case MetadataFormat::Text:
-                root = json{{"text", rawMetadata}};
-                break;
-            case MetadataFormat::None:
-            default:
-                root = json::object();
-                break;
-            }
-        }
-
     }
 
     struct MetadataBuilder::Impl
@@ -232,8 +206,27 @@ namespace slideio
         MetadataBuilder makeDefaultMetadataBuilder(
             const std::string& rawMetadata, MetadataFormat fmt)
         {
-            nlohmann::json root;
-            buildDefaultMetadataTree(root, rawMetadata, fmt);
+            using nlohmann::json;
+            json root;
+            switch (fmt)
+            {
+            case MetadataFormat::JSON:
+                try { root = json::parse(rawMetadata); }
+                catch (...) {
+                    root = json{{"#error", "invalid json"}};
+                }
+                break;
+            case MetadataFormat::XML:
+                root = xmlStringToJson(rawMetadata);
+                break;
+            case MetadataFormat::Text:
+                root = json{{"text", rawMetadata}};
+                break;
+            case MetadataFormat::None:
+            default:
+                root = json::object();
+                break;
+            }
             return builderFromJson(std::move(root));
         }
     }

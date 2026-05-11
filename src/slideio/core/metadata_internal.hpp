@@ -12,17 +12,9 @@ namespace slideio { namespace detail {
 
     SLIDEIO_CORE_EXPORTS Metadata    makeMetadataFromJson(nlohmann::json root);
     SLIDEIO_CORE_EXPORTS nlohmann::json xmlStringToJson(const std::string& xml);
-    SLIDEIO_CORE_EXPORTS void buildDefaultMetadataTree(nlohmann::json& root,
-                                                      const std::string& rawMetadata,
-                                                      MetadataFormat fmt);
     SLIDEIO_CORE_EXPORTS MetadataBuilder builderFromJson(nlohmann::json root);
     SLIDEIO_CORE_EXPORTS MetadataBuilder makeDefaultMetadataBuilder(
         const std::string& rawMetadata, MetadataFormat fmt);
-
-    inline nlohmann::json& asJson(void* handle)
-    {
-        return *static_cast<nlohmann::json*>(handle);
-    }
 
 }}
 
