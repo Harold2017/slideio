@@ -196,3 +196,21 @@ TEST_F(ChannelAttributesTest, NumChannelAttributes) {
     EXPECT_EQ(scene->getNumChannelAttributes(), 3);
 }
 
+TEST_F(ChannelAttributesTest, GetChannelAttributesTreeShape) {
+    scene->defineChannelAttribute("wavelength");
+    scene->defineChannelAttribute("exposure");
+    scene->setChannelAttribute(0, "wavelength", "488nm");
+    scene->setChannelAttribute(0, "exposure",   "100ms");
+    scene->setChannelAttribute(1, "wavelength", "561nm");
+
+    const slideio::Metadata& attrs = scene->getChannelAttributes();
+    ASSERT_EQ(attrs.type(), slideio::Metadata::Type::Array);
+    ASSERT_EQ(attrs.size(), 3u);                              // numChannels == 3
+    EXPECT_EQ(attrs[0].type(), slideio::Metadata::Type::Object);
+    EXPECT_EQ(attrs[0]["wavelength"].asString(), "488nm");
+    EXPECT_EQ(attrs[0]["exposure"].asString(),   "100ms");
+    EXPECT_EQ(attrs[1]["wavelength"].asString(), "561nm");
+    EXPECT_FALSE(attrs[1].contains("exposure"));
+    EXPECT_EQ(attrs[2].type(), slideio::Metadata::Type::Object);
+    EXPECT_EQ(attrs[2].size(), 0u);                           // empty object for unset channel
+}

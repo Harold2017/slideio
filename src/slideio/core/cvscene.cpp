@@ -330,3 +330,26 @@ const Metadata& CVScene::getMetadata() const
     });
     return m_metadata;
 }
+
+const Metadata& CVScene::getChannelAttributes() const
+{
+    std::call_once(m_channelAttrsOnce, [this]
+    {
+        const int numChannels = getNumChannels();
+        nlohmann::json root = nlohmann::json::array();
+        for (int ch = 0; ch < numChannels; ++ch) {
+            nlohmann::json obj = nlohmann::json::object();
+            if (ch < static_cast<int>(m_channelAttributes.size())) {
+                const auto& row = m_channelAttributes[ch];
+                for (size_t i = 0; i < row.size() && i < m_channelAttributeNames.size(); ++i) {
+                    if (!row[i].empty()) {
+                        obj[m_channelAttributeNames[i]] = row[i];
+                    }
+                }
+            }
+            root.push_back(std::move(obj));
+        }
+        m_channelAttributesMeta = detail::makeMetadataFromJson(std::move(root));
+    });
+    return m_channelAttributesMeta;
+}

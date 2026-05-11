@@ -219,6 +219,14 @@ namespace slideio
         virtual int getNumChannelAttributes() const {
             return static_cast<int>(m_channelAttributeNames.size());
         }
+        /**@brief returns channel attributes as a Metadata tree.
+         *
+         * Always an Array of length getNumChannels(). Each element is an
+         * Object keyed by attribute name; channels with no attributes get an
+         * empty Object. Built lazily on first call; setters must not be
+         * called after the first read.
+         */
+        const Metadata& getChannelAttributes() const;
     protected:
         std::vector<int> getValidChannelIndices(const std::vector<int>& channelIndices);
         void initializeSceneBlock(const cv::Size& blockSize, const std::vector<int>& channelIndices,
@@ -244,6 +252,8 @@ namespace slideio
     private:
         mutable std::once_flag m_metadataOnce;
         mutable Metadata       m_metadata;
+        mutable std::once_flag m_channelAttrsOnce;
+        mutable Metadata       m_channelAttributesMeta;
     };
 }
 
