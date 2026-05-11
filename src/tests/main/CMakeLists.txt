@@ -32,6 +32,7 @@ set(TEST_SOURCES
   test_endian.cpp
   test_dimensions.cpp
   test_metadata.cpp
+  test_metadata_builder.cpp
   test_tifffiles.cpp
   test_fiwrapper.cpp
   test_channel_attributes.cpp

@@ -176,4 +176,38 @@ namespace slideio
             }
         }
     }
+
+    struct MetadataBuilder::Impl
+    {
+        std::shared_ptr<nlohmann::json> root;   // shared owner of the tree
+        nlohmann::json*                 view = nullptr;   // points into *root
+    };
+
+    MetadataBuilder::MetadataBuilder()
+        : m_impl(std::make_shared<Impl>())
+    {
+        m_impl->root = std::make_shared<nlohmann::json>();   // default = Null
+        m_impl->view = m_impl->root.get();
+    }
+    MetadataBuilder::~MetadataBuilder() = default;
+    MetadataBuilder::MetadataBuilder(const MetadataBuilder&) = default;
+    MetadataBuilder::MetadataBuilder(MetadataBuilder&&) noexcept = default;
+    MetadataBuilder& MetadataBuilder::operator=(const MetadataBuilder&) = default;
+    MetadataBuilder& MetadataBuilder::operator=(MetadataBuilder&&) noexcept = default;
+    MetadataBuilder::MetadataBuilder(std::shared_ptr<Impl> impl) : m_impl(std::move(impl)) {}
+
+    void MetadataBuilder::set(const std::string& value)
+    {
+        *m_impl->view = value;
+    }
+
+    bool MetadataBuilder::isNull() const
+    {
+        return m_impl->view->is_null();
+    }
+
+    Metadata MetadataBuilder::freeze() const
+    {
+        return detail::makeMetadataFromJson(nlohmann::json(*m_impl->view));
+    }
 }

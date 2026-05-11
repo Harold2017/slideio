@@ -61,6 +61,31 @@ namespace slideio
         explicit Metadata(std::shared_ptr<const Impl> impl);
         std::shared_ptr<const Impl> m_impl;
     };
+
+    class SLIDEIO_CORE_EXPORTS MetadataBuilder
+    {
+    public:
+        MetadataBuilder();
+        ~MetadataBuilder();
+        MetadataBuilder(const MetadataBuilder&);
+        MetadataBuilder(MetadataBuilder&&) noexcept;
+        MetadataBuilder& operator=(const MetadataBuilder&);
+        MetadataBuilder& operator=(MetadataBuilder&&) noexcept;
+
+        // Leaf assignment — replaces the current node with a scalar value.
+        void set(const std::string& value);
+
+        // Inspection.
+        bool isNull() const;
+
+        // Snapshot the current state into an immutable Metadata.
+        Metadata freeze() const;
+
+        struct Impl;
+    private:
+        explicit MetadataBuilder(std::shared_ptr<Impl> impl);
+        std::shared_ptr<Impl> m_impl;
+    };
 }
 
 #if defined(_MSC_VER)
