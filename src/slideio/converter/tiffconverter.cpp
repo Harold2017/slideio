@@ -183,9 +183,10 @@ std::string TiffConverter::createOMETiffDescription() const {
     for (int channel = sceneChannelRange.start; channel < sceneChannelRange.end; ++channel) {
         std::string idAttr = std::string("Channel:0:") + std::to_string(id++);
         auto* xmlChannel = doc.NewElement("Channel");
-        for (int attIndex = 0; attIndex < (int)m_scene->getNumChannelAttributes(); ++attIndex) {
-            std::string attrValue = m_scene->getChannelAttributeValue(channel, attIndex);
-            const std::string& attrName = m_scene->getChannelAttributeName(attIndex);
+        const slideio::Metadata& chanAttrs = m_scene->getChannelAttributes();
+        const slideio::Metadata chan = chanAttrs[channel];
+        for (const std::string& attrName : chan.keys()) {
+            std::string attrValue = chan[attrName].asString();
             if (attrName == "Color" && ColorTools::detectHexColorFormat(attrValue) != HexColorFormat::UNKNOWN) {
                 attrValue = ColorTools::hexToInt32String(attrValue);
             }
