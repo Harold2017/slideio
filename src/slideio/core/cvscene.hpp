@@ -8,6 +8,7 @@
 #include "slideio/base/resolution.hpp"
 #include "slideio/base/slideio_enums.hpp"
 #include "slideio/core/metadata.hpp"
+#include <nlohmann/json.hpp>
 #include <opencv2/core.hpp>
 #include <vector>
 #include <string>
@@ -225,11 +226,6 @@ namespace slideio
          * Object keyed by attribute name; channels with no attributes get
          * an empty Object. Built lazily on first call; neither the channel
          * count nor the attribute values must change after the first read.
-         *
-         * Bridge-phase limitation: explicitly-empty string attributes are
-         * not surfaced through this accessor while the underlying storage
-         * is still vector-of-vector-of-string. The limitation lifts when
-         * the storage swaps to nlohmann::json.
          */
         const Metadata& getChannelAttributes() const;
     protected:
@@ -253,6 +249,7 @@ namespace slideio
         MetadataFormat m_metadataFormat = MetadataFormat::None;
         std::vector<std::string> m_channelAttributeNames;
         std::vector<std::vector<std::string>> m_channelAttributes;
+        nlohmann::json m_channelAttributesJson;
 
     private:
         mutable std::once_flag m_metadataOnce;

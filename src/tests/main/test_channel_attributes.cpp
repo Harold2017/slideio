@@ -119,3 +119,13 @@ TEST_F(ChannelAttributesTest, GetChannelAttributesTreeShapeNoAttributes) {
         EXPECT_EQ(attrs[i].size(), 0u);
     }
 }
+
+TEST_F(ChannelAttributesTest, EmptyAttributeValues) {
+    scene->setChannelAttribute(0, "wavelength", "");
+    scene->setChannelAttribute(0, "comment",    "");
+    const slideio::Metadata chan0 = scene->getChannelAttributes()[0];
+    EXPECT_TRUE(chan0.contains("wavelength"));
+    EXPECT_TRUE(chan0.contains("comment"));
+    EXPECT_EQ(chan0["wavelength"].asString(), "");
+    EXPECT_EQ(chan0["comment"].asString(),    "");
+}
