@@ -74,6 +74,10 @@ namespace slideio
 
         // Leaf assignment — replaces the current node with a scalar value.
         void set(const std::string& value);
+        void set(bool value);
+        void set(int64_t value);
+        void set(double value);
+        void set(const char* value);
 
         // Inspection.
         bool isNull() const;

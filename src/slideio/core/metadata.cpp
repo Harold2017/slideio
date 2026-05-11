@@ -3,6 +3,7 @@
 // of this distribution and at http://slideio.com/license.html.
 #include "slideio/core/metadata.hpp"
 #include "slideio/core/metadata_internal.hpp"
+#include "slideio/base/exceptions.hpp"
 #include <nlohmann/json.hpp>
 #include <stdexcept>
 
@@ -199,6 +200,25 @@ namespace slideio
     void MetadataBuilder::set(const std::string& value)
     {
         *m_impl->view = value;
+    }
+    void MetadataBuilder::set(bool value)
+    {
+        *m_impl->view = value;
+    }
+    void MetadataBuilder::set(int64_t value)
+    {
+        *m_impl->view = value;
+    }
+    void MetadataBuilder::set(double value)
+    {
+        *m_impl->view = value;
+    }
+    void MetadataBuilder::set(const char* value)
+    {
+        if (value == nullptr) {
+            RAISE_RUNTIME_ERROR << "MetadataBuilder::set: const char* value must not be null";
+        }
+        *m_impl->view = std::string(value);
     }
 
     bool MetadataBuilder::isNull() const
