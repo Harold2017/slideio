@@ -86,13 +86,25 @@ namespace slideio
         // (e.g. operator[](key) on an Array or scalar node).
         MetadataBuilder operator[](const std::string& key);
 
+        // operator[](index) on a Null node coerces to Array and grows to
+        // index+1 (new slots default to empty Objects, not Null, so the
+        // common pattern b[i][key].set(v) works without intermediate
+        // makeObject() on the new slot). Throws on type mismatch
+        // (e.g. operator[](index) on an Object or scalar node).
+        MetadataBuilder operator[](size_t index);
+
         // Ensures the current node is an empty Object. Idempotent if already
         // an Object; replaces a scalar/Null/Array otherwise.
         void makeObject();
 
+        // Ensures the current node is an empty Array.
+        void makeArray();
+
         // Inspection.
         bool isNull() const;
         bool isObject() const;
+        bool isArray() const;
+        size_t size() const;
 
         // Snapshot the current state into an immutable Metadata.
         Metadata freeze() const;

@@ -243,6 +243,31 @@ namespace slideio
         }
     }
 
+    MetadataBuilder MetadataBuilder::operator[](size_t index)
+    {
+        if (m_impl->view->is_null()) {
+            *m_impl->view = nlohmann::json::array();
+        }
+        if (!m_impl->view->is_array()) {
+            RAISE_RUNTIME_ERROR << "MetadataBuilder::operator[](index): current node is not an array";
+        }
+        while (m_impl->view->size() <= index) {
+            m_impl->view->push_back(nlohmann::json::object());
+        }
+        nlohmann::json& child = (*m_impl->view)[index];
+        auto childImpl = std::make_shared<Impl>();
+        childImpl->root = m_impl->root;
+        childImpl->view = &child;
+        return MetadataBuilder(std::move(childImpl));
+    }
+
+    void MetadataBuilder::makeArray()
+    {
+        if (!m_impl->view->is_array()) {
+            *m_impl->view = nlohmann::json::array();
+        }
+    }
+
     bool MetadataBuilder::isNull() const
     {
         return m_impl->view->is_null();
@@ -251,6 +276,17 @@ namespace slideio
     bool MetadataBuilder::isObject() const
     {
         return m_impl->view->is_object();
+    }
+
+    bool MetadataBuilder::isArray() const
+    {
+        return m_impl->view->is_array();
+    }
+
+    size_t MetadataBuilder::size() const
+    {
+        const auto& v = *m_impl->view;
+        return (v.is_object() || v.is_array()) ? v.size() : 0u;
     }
 
     Metadata MetadataBuilder::freeze() const

@@ -103,3 +103,44 @@ TEST(MetadataBuilder, MakeObjectOnScalarReplaces)
     EXPECT_EQ(m.type(), Metadata::Type::Object);
     EXPECT_EQ(m.size(), 0u);
 }
+
+TEST(MetadataBuilder, ArrayIndexAutoGrow)
+{
+    MetadataBuilder b;
+    b[2]["wavelength"].set(std::string("640nm"));
+
+    Metadata m = b.freeze();
+    EXPECT_EQ(m.type(), Metadata::Type::Array);
+    EXPECT_EQ(m.size(), 3u);                          // grown to index+1
+    EXPECT_EQ(m[0].type(), Metadata::Type::Object);   // new slots default to empty Object
+    EXPECT_EQ(m[0].size(), 0u);
+    EXPECT_EQ(m[1].type(), Metadata::Type::Object);
+    EXPECT_EQ(m[1].size(), 0u);
+    EXPECT_EQ(m[2]["wavelength"].asString(), "640nm");
+}
+
+TEST(MetadataBuilder, MakeArrayIdempotent)
+{
+    MetadataBuilder b;
+    b.makeArray();
+    EXPECT_TRUE(b.isArray());
+
+    b[0].set(std::string("first"));
+    b.makeArray();                                    // idempotent — must not clobber [0]
+    EXPECT_TRUE(b.isArray());
+
+    Metadata m = b.freeze();
+    EXPECT_EQ(m.size(), 1u);
+    EXPECT_EQ(m[0].asString(), "first");
+}
+
+TEST(MetadataBuilder, SizeReflectsContainer)
+{
+    MetadataBuilder b;
+    EXPECT_EQ(b.size(), 0u);                          // Null reports 0
+
+    b.makeObject();
+    EXPECT_EQ(b.size(), 0u);
+    b["k"].set(std::string("v"));
+    EXPECT_EQ(b.size(), 1u);
+}
