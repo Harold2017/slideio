@@ -262,34 +262,68 @@ void CZISlide::parseChannels(XMLNode* root)
     };
     int currentIndex(0);
     const XMLElement* xmlDisplayChannels = XMLTools::getElementByPath(root, displayInfoPath);
+    if (xmlDisplayChannels == nullptr) {
+        return;
+    }
     for (auto xmlDisplayChannel = xmlDisplayChannels->FirstChildElement("Channel");
         xmlDisplayChannel != nullptr; xmlDisplayChannel = xmlDisplayChannel->NextSiblingElement())
     {
         const char* name = xmlDisplayChannel->Name();
         if (name && strcmp(name, "Channel") == 0)
         {
-            auto xmlShortName= xmlDisplayChannel->FirstChildElement("ShortName");
-            if(xmlShortName)
-            {
+            // Resolve which channel this DisplaySetting block applies to: by Id
+            // when present in the id map, otherwise by positional fallback.
+            const char* channelId = xmlDisplayChannel->Attribute("Id");
+            int targetIndex = -1;
+            if (channelId) {
+                auto idIt = channelIds.find(std::string(channelId));
+                if (idIt != channelIds.end()) {
+                    targetIndex = idIt->second;
+                }
+            }
+            if (targetIndex < 0 && currentIndex < static_cast<int>(m_channels.size())) {
+                // id is not in the id map. Most likely metadata is not created
+                // according to the specs.
+                targetIndex = currentIndex;
+            }
+
+            auto xmlShortName = xmlDisplayChannel->FirstChildElement("ShortName");
+            if (xmlShortName && targetIndex >= 0) {
                 const char* channelName = xmlShortName->GetText();
-                const char* channelId = xmlDisplayChannel->Attribute("Id");
-                if(channelName && channelId)
-                {
-                    auto idIt = channelIds.find(std::string(channelId));
-                    if(idIt!=channelIds.end())
-                    {
-                        const int channelIndex = idIt->second;
-                        m_channels[channelIndex].name = channelName;
+                if (channelName) {
+                    m_channels[targetIndex].name = channelName;
+                }
+            }
+
+            // Merge leaf DisplaySetting children (Color, DyeName, DyeMaxEmission,
+            // etc.) into the channel's attribute list. Skip names that already
+            // exist — Information/Image/Dimensions/Channels takes precedence
+            // since it carries the acquisition truth (EmissionWavelength,
+            // ContrastMethod, …). DisplaySetting fills the gap with display-
+            // oriented attributes that Zen writes nowhere else.
+            if (targetIndex >= 0) {
+                CZIChannelInfo& channel = m_channels[targetIndex];
+                for (const XMLElement* childElem = xmlDisplayChannel->FirstChildElement();
+                     childElem != nullptr;
+                     childElem = childElem->NextSiblingElement()) {
+                    const char* elemName = childElem->Name();
+                    const char* elemText = childElem->GetText();
+                    if (!elemName || !elemText || childElem->FirstChildElement()) {
+                        continue;
                     }
-                    else
-                    {
-                        // id is not in the id map. Most likely
-                        // matadtata is not created according to
-                        // the specs.
-                        m_channels[currentIndex].name = channelName;
+                    bool exists = false;
+                    for (const auto& a : channel.attributes) {
+                        if (a.first == elemName) {
+                            exists = true;
+                            break;
+                        }
+                    }
+                    if (!exists) {
+                        channel.attributes.emplace_back(elemName, elemText);
                     }
                 }
             }
+
             currentIndex++;
         }
     }
