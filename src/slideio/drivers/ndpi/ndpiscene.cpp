@@ -5,6 +5,8 @@
 #include "slideio/drivers/ndpi/ndpiscene.hpp"
 
 #include <opencv2/imgproc.hpp>
+#include <nlohmann/json.hpp>
+#include <sstream>
 
 #include "ndpifile.hpp"
 #include "slideio/core/tools/tools.hpp"
@@ -13,6 +15,63 @@
 #include "slideio/base/log.hpp"
 
 using namespace slideio;
+
+namespace
+{
+    template <typename T>
+    std::string enumToString(const T& value)
+    {
+        std::ostringstream os;
+        os << value;
+        return os.str();
+    }
+
+    nlohmann::json directoryToJson(const NDPITiffDirectory& dir)
+    {
+        using nlohmann::json;
+        json j;
+        j["dirIndex"] = dir.dirIndex;
+        j["offset"] = dir.offset;
+        j["width"] = dir.width;
+        j["height"] = dir.height;
+        j["tiled"] = dir.tiled;
+        j["tileWidth"] = dir.tileWidth;
+        j["tileHeight"] = dir.tileHeight;
+        j["channels"] = dir.channels;
+        j["bitsPerSample"] = dir.bitsPerSample;
+        j["photometric"] = dir.photometric;
+        j["YCbCrSubsampling"] = { dir.YCbCrSubsampling[0], dir.YCbCrSubsampling[1] };
+        j["compression"] = dir.compression;
+        j["slideioCompression"] = enumToString(dir.slideioCompression);
+        j["description"] = dir.description;
+        j["userLabel"] = dir.userLabel;
+        j["comments"] = dir.comments;
+        j["resolution"] = { {"x", dir.res.x}, {"y", dir.res.y} };
+        j["position"] = { {"x", dir.position.x}, {"y", dir.position.y} };
+        j["interleaved"] = dir.interleaved;
+        j["rowsPerStrip"] = dir.rowsPerStrip;
+        j["dataType"] = enumToString(dir.dataType);
+        j["stripSize"] = dir.stripSize;
+        j["magnification"] = dir.magnification;
+        j["blankLines"] = dir.blankLines;
+        j["mcuStartsCount"] = static_cast<uint64_t>(dir.mcuStarts.size());
+        j["jpegHeaderOffset"] = dir.jpegHeaderOffset;
+        j["jpegSOFMarker"] = dir.jpegSOFMarker;
+        j["jpegHeaderSize"] = dir.jpegHeaderSize;
+        j["rawStripSize"] = dir.rawStripSize;
+        j["auxImage"] = dir.auxImage;
+        j["type"] = enumToString(dir.getType());
+
+        if (!dir.subdirectories.empty()) {
+            auto subs = json::array();
+            for (const auto& sub : dir.subdirectories) {
+                subs.push_back(directoryToJson(sub));
+            }
+            j["subdirectories"] = subs;
+        }
+        return j;
+    }
+}
 
 class NDPIUserData
 {
@@ -89,6 +148,9 @@ void NDPIScene::init(const std::string& name, int sceneIndex, const std::string&
     const NDPITiffDirectory& dir = directories[m_startDir];
     m_rect.width = dir.width;
     m_rect.height = dir.height;
+
+    m_rawMetadata = directoryToJson(dir).dump(2);
+    m_metadataFormat = MetadataFormat::JSON;
 
     const int numLevels = m_endDir - m_startDir;
     m_levels.resize(numLevels);

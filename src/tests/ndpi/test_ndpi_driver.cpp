@@ -63,7 +63,8 @@ TEST_F(NDPIImageDriverTests, openFile)
     slideio::DataType dt = scene->getChannelDataType(0);
     EXPECT_EQ(slideio::DataType::DT_Byte, dt);
 	EXPECT_EQ(slide->getMetadataFormat(), slideio::MetadataFormat::None);
-    EXPECT_EQ(scene->getMetadataFormat(), slideio::MetadataFormat::None);
+    EXPECT_EQ(scene->getMetadataFormat(), slideio::MetadataFormat::JSON);
+    EXPECT_FALSE(scene->getRawMetadata().empty());
 }
 
 TEST_F(NDPIImageDriverTests, readStrippedScene)
