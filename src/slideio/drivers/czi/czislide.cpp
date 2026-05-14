@@ -5,6 +5,7 @@
 #include "slideio/drivers/czi/cziscene.hpp"
 #include "slideio/drivers/czi/czistructs.hpp"
 #include "slideio/core/tools/xmltools.hpp"
+#include <algorithm>
 #include <filesystem>
 #include <tinyxml2.h>
 #include <set>
@@ -265,8 +266,9 @@ void CZISlide::parseChannels(XMLNode* root)
     if (xmlDisplayChannels == nullptr) {
         return;
     }
+    int numChannels = 0;
     for (auto xmlDisplayChannel = xmlDisplayChannels->FirstChildElement("Channel");
-        xmlDisplayChannel != nullptr; xmlDisplayChannel = xmlDisplayChannel->NextSiblingElement())
+        xmlDisplayChannel != nullptr; xmlDisplayChannel = xmlDisplayChannel->NextSiblingElement(), ++numChannels)
     {
         const char* name = xmlDisplayChannel->Name();
         if (name && strcmp(name, "Channel") == 0)
@@ -323,12 +325,45 @@ void CZISlide::parseChannels(XMLNode* root)
                     }
                 }
             }
-
             currentIndex++;
         }
     }
+    if (numChannels == 1 && !m_channels.empty()) {
+        processBgrChannelAttributes();
+    }
 }
 
+void CZISlide::processBgrChannelAttributes() {
+    if (m_channels.empty()) {
+        return;
+    }
+    const auto& firstAttributes = m_channels[0].attributes;
+    auto pixelTypeIt = std::find_if(firstAttributes.begin(), firstAttributes.end(),
+        [](const std::pair<std::string, std::string>& a) { return a.first == "PixelType"; });
+    if (pixelTypeIt == firstAttributes.end() || pixelTypeIt->second.compare(0, 3, "Bgr") != 0) {
+        return;
+    }
+
+    const std::vector<std::pair<std::string, std::string>> baseAttributes = firstAttributes;
+    if (m_channels.size() < 3) {
+        m_channels.resize(3);
+    }
+    m_channels[1].attributes = baseAttributes;
+    m_channels[2].attributes = baseAttributes;
+
+    // CZI BGR pixel ordering: channel 0 = Blue, 1 = Green, 2 = Red.
+    static const char* const kBgrColors[3] = { "#0000FF", "#00FF00", "#FF0000" };
+    for (int i = 0; i < 3; ++i) {
+        auto& attrs = m_channels[i].attributes;
+        auto colorIt = std::find_if(attrs.begin(), attrs.end(),
+            [](const std::pair<std::string, std::string>& a) { return a.first == "Color"; });
+        if (colorIt == attrs.end()) {
+            attrs.emplace_back("Color", kBgrColors[i]);
+        } else {
+            colorIt->second = kBgrColors[i];
+        }
+    }
+}
 
 void CZISlide::readMetadata()
 {

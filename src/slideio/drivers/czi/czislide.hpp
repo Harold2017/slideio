@@ -56,6 +56,7 @@ namespace slideio
         void parseResolutions(tinyxml2::XMLNode* root);
         void parseSizes(tinyxml2::XMLNode* root);
         void createJpgAttachmentScenes(int64_t dataPosition, int64_t dataSize, const std::string& name);
+        void processBgrChannelAttributes();
         void parseChannels(tinyxml2::XMLNode* root);
         void createCZIAttachmentScenes(const int64_t dataPos, int64_t dataSize, const std::string& attachmentName);
         void addAuxiliaryImage(const std::string& name, const std::string& type, int64_t position);

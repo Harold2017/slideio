@@ -674,7 +674,7 @@ TEST(CZIImageDriver, channelAttributes)
     ASSERT_FALSE(scene == nullptr);
     const slideio::Metadata& chanAttrs = scene->getChannelAttributes();
 	ASSERT_EQ(chanAttrs.size(), 3u);                  // numChannels for this scene
-	EXPECT_EQ(chanAttrs[0].size(), 10u);              // channel 0 has the 10 distinct attribute names
+	EXPECT_EQ(chanAttrs[0].size(), 17u);              // channel 0 has the 17 distinct attribute names
 	EXPECT_TRUE(chanAttrs[0].contains("Name"));
     EXPECT_EQ(chanAttrs[0]["Name"].asString(),                "ChS1");
     EXPECT_EQ(chanAttrs[1]["Name"].asString(),                "Ch2");
@@ -683,6 +683,43 @@ TEST(CZIImageDriver, channelAttributes)
     EXPECT_EQ(chanAttrs[0]["ChannelType"].asString(),         "Unspecified");
     EXPECT_EQ(chanAttrs[1]["PinholeSizeAiry"].asString(),     "1");
     EXPECT_EQ(chanAttrs[0]["AcquisitionMode"].asString(),     "LaserScanningConfocalMicroscopy");
+}
+
+/**
+ * 
+ */
+TEST(CZIImageDriver, channelAttributes2)
+{
+    if (!TestTools::isFullTestEnabled())
+    {
+        GTEST_SKIP() << "Skip private test because full dataset is not enabled";
+    }
+    {
+        std::string imagePath = TestTools::getFullTestImagePath("czi", "bug_2D_rgb_compressed.czi");
+        slideio::CZIImageDriver driver;
+        std::shared_ptr<slideio::CVSlide> slide = driver.openFile(imagePath);
+        ASSERT_TRUE(slide != nullptr);
+        std::shared_ptr<slideio::CVScene> scene = slide->getScene(0);
+        const slideio::Metadata& metadata = scene->getChannelAttributes();
+        EXPECT_TRUE(metadata.isArray());
+        EXPECT_EQ(metadata.size(), 3);
+		EXPECT_EQ(metadata[0]["Color"].asString(), "#0000FF");
+        EXPECT_EQ(metadata[1]["Color"].asString(), "#00FF00");
+        EXPECT_EQ(metadata[2]["Color"].asString(), "#FF0000");
+    }
+    {
+        std::string imagePath = TestTools::getFullTestImagePath("czi", "private/20-024_K5_HE.czi");
+        slideio::CZIImageDriver driver;
+        std::shared_ptr<slideio::CVSlide> slide = driver.openFile(imagePath);
+        ASSERT_TRUE(slide != nullptr);
+        std::shared_ptr<slideio::CVScene> scene = slide->getScene(0);
+        const slideio::Metadata& metadata = scene->getChannelAttributes();
+        EXPECT_TRUE(metadata.isArray());
+        EXPECT_EQ(metadata.size(), 3);
+        EXPECT_EQ(metadata[0]["Color"].asString(), "#0000FF");
+        EXPECT_EQ(metadata[1]["Color"].asString(), "#00FF00");
+        EXPECT_EQ(metadata[2]["Color"].asString(), "#FF0000");
+    }
 }
 
 TEST(CZIImageDriver, getDriverId)
