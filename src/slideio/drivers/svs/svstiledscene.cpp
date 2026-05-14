@@ -74,6 +74,8 @@ void SVSTiledScene::initialize()
             level.setTileSize({ directory.tileWidth, directory.tileHeight });
             level.setMagnification(m_magnification * scale);
         }
+        m_rawMetadata = SVSTools::tiffDirectoryToJson(m_directories.front()).dump(2);
+        m_metadataFormat = MetadataFormat::JSON;
     }
 }
 

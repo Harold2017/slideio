@@ -360,7 +360,8 @@ TEST(SVSImageDriver, slideRawMetadata)
         const std::string header("Aperio Image Library");
         EXPECT_TRUE(TestTools::starts_with(metadata, header));
         EXPECT_EQ(slide->getMetadataFormat(), slideio::MetadataFormat::Text);
-		EXPECT_EQ(slide->getScene(0)->getMetadataFormat(), slideio::MetadataFormat::None);
+		EXPECT_EQ(slide->getScene(0)->getMetadataFormat(), slideio::MetadataFormat::JSON);
+		EXPECT_FALSE(slide->getScene(0)->getRawMetadata().empty());
     }
 }
 

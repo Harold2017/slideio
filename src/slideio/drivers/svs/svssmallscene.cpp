@@ -50,6 +50,9 @@ SVSSmallScene::SVSSmallScene(const std::string& filePath,
     level.setTileSize({ m_directory.tileWidth, m_directory.tileHeight });
     level.setSize({ m_directory.width, m_directory.height });
     m_levels.push_back(level);
+
+    m_rawMetadata = SVSTools::tiffDirectoryToJson(m_directory).dump(2);
+    m_metadataFormat = MetadataFormat::JSON;
 }
 
 

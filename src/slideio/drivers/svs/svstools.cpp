@@ -2,8 +2,10 @@
 // It is subject to the license terms in the LICENSE file found in the top-level directory
 // of this distribution and at http://slideio.com/license.html.
 #include "slideio/drivers/svs/svstools.hpp"
+#include "slideio/base/slideio_enums.hpp"
 #include <string>
 #include <regex>
+#include <sstream>
 #include <vector>
 
 using namespace slideio;
@@ -14,6 +16,13 @@ namespace {
         if (a == std::string::npos) return {};
         const size_t b = s.find_last_not_of(" \t\r\n");
         return s.substr(a, b - a + 1);
+    }
+
+    template <typename T>
+    std::string enumToString(const T& value) {
+        std::ostringstream os;
+        os << value;
+        return os.str();
     }
 }
 
@@ -94,4 +103,43 @@ nlohmann::json SVSTools::parseAperioMetadata(const std::string& description)
     }
 
     return result;
+}
+
+nlohmann::json SVSTools::tiffDirectoryToJson(const TiffDirectory& dir)
+{
+    using nlohmann::json;
+    json j;
+    j["dirIndex"] = dir.dirIndex;
+    j["offset"] = dir.offset;
+    j["width"] = dir.width;
+    j["height"] = dir.height;
+    j["tiled"] = dir.tiled;
+    j["tileWidth"] = dir.tileWidth;
+    j["tileHeight"] = dir.tileHeight;
+    j["channels"] = dir.channels;
+    j["bitsPerSample"] = dir.bitsPerSample;
+    j["photometric"] = dir.photometric;
+    j["YCbCrSubsampling"] = { dir.YCbCrSubsampling[0], dir.YCbCrSubsampling[1] };
+    j["subFileType"] = dir.subFileType;
+    j["compression"] = dir.compression;
+    j["slideioCompression"] = enumToString(dir.slideioCompression);
+    j["description"] = dir.description;
+    j["software"] = dir.software;
+    j["resolution"] = { {"x", dir.res.x}, {"y", dir.res.y} };
+    j["position"] = { {"x", dir.position.x}, {"y", dir.position.y} };
+    j["interleaved"] = dir.interleaved;
+    j["rowsPerStrip"] = dir.rowsPerStrip;
+    j["dataType"] = enumToString(dir.dataType);
+    j["stripSize"] = dir.stripSize;
+    j["compressionQuality"] = dir.compressionQuality;
+    j["byteOffset"] = dir.byteOffset;
+
+    if (!dir.subdirectories.empty()) {
+        auto subs = json::array();
+        for (const auto& sub : dir.subdirectories) {
+            subs.push_back(tiffDirectoryToJson(sub));
+        }
+        j["subdirectories"] = subs;
+    }
+    return j;
 }
