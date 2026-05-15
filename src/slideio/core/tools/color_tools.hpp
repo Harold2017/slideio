@@ -30,5 +30,6 @@ namespace  slideio {
         static std::string RGBAToHexRGBA(const std::array<uint8_t, 4>& rgba);
         static std::string hexToInt32String(const std::string& hexColor);
         static std::string rgbaInt32StringToHexARGB(const std::string& value);
+        static std::string rgbCsvToHexRGB(const std::string& csv);
     };
 }

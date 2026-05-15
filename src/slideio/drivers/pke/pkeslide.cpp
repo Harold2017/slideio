@@ -2,16 +2,15 @@
 // It is subject to the license terms in the LICENSE file found in the top-level directory
 // of this distribution and at http://slideio.com/license.html.
 #include "slideio/drivers/pke/pkeslide.hpp"
-
-#include <fstream>
-#include <tinyxml2.h>
-
 #include "slideio/imagetools/imagetools.hpp"
 #include "slideio/drivers/pke/pkesmallscene.hpp"
 #include "slideio/drivers/pke/pketiledscene.hpp"
 #include "slideio/imagetools/tifftools.hpp"
 #include "slideio/base/base.hpp"
 #include "slideio/base/log.hpp"
+#include <fstream>
+#include <tinyxml2.h>
+#include <filesystem>
 
 
 
@@ -121,9 +120,13 @@ std::shared_ptr<PKESlide> PKESlide::openFile(const std::string& filePath, const 
     tinyxml2::XMLPrinter printer;
     xmlMetadata.Print(&printer);
     slide->m_rawMetadata = printer.CStr();
-    //std::ofstream outFile("D:/Temp/output.xml");
-    //outFile << slide->m_rawMetadata;
-    //outFile.close();
+#if defined(_DEBUG)
+    // std::string fileName = std::filesystem::path(filePath).stem().string();
+    // std::string xmlPath = "D:/Temp/" + fileName + ".xml";
+    // std::ofstream outFile(xmlPath);
+    // outFile << slide->m_rawMetadata;
+    // outFile.close();
+#endif
     return slide;
 }
 

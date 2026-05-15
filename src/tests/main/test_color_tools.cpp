@@ -721,3 +721,41 @@ TEST(ColorTools, rgbaInt32StringToHexARGB_RejectsInvalid)
     EXPECT_THROW(ColorTools::rgbaInt32StringToHexARGB("not-a-number"), slideio::RuntimeError);
     EXPECT_THROW(ColorTools::rgbaInt32StringToHexARGB(""), slideio::RuntimeError);
 }
+
+// ============================================================
+// rgbCsvToHexRGB tests (PKE Color XML convention)
+// ============================================================
+
+TEST(ColorTools, rgbCsvToHexRGB_BasicColors)
+{
+    EXPECT_EQ(ColorTools::rgbCsvToHexRGB("255,0,0"), "#FF0000");
+    EXPECT_EQ(ColorTools::rgbCsvToHexRGB("0,255,0"), "#00FF00");
+    EXPECT_EQ(ColorTools::rgbCsvToHexRGB("0,0,255"), "#0000FF");
+}
+
+TEST(ColorTools, rgbCsvToHexRGB_MixedValues)
+{
+    // Orange
+    EXPECT_EQ(ColorTools::rgbCsvToHexRGB("255,165,0"), "#FFA500");
+    // Mid-gray
+    EXPECT_EQ(ColorTools::rgbCsvToHexRGB("128,128,128"), "#808080");
+}
+
+TEST(ColorTools, rgbCsvToHexRGB_ToleratesWhitespace)
+{
+    EXPECT_EQ(ColorTools::rgbCsvToHexRGB(" 255 , 165 , 0 "), "#FFA500");
+}
+
+TEST(ColorTools, rgbCsvToHexRGB_RejectsOutOfRange)
+{
+    EXPECT_THROW(ColorTools::rgbCsvToHexRGB("256,0,0"), slideio::RuntimeError);
+    EXPECT_THROW(ColorTools::rgbCsvToHexRGB("-1,0,0"), slideio::RuntimeError);
+}
+
+TEST(ColorTools, rgbCsvToHexRGB_RejectsMalformed)
+{
+    EXPECT_THROW(ColorTools::rgbCsvToHexRGB("255,0"), slideio::RuntimeError);
+    EXPECT_THROW(ColorTools::rgbCsvToHexRGB("255,0,0,0"), slideio::RuntimeError);
+    EXPECT_THROW(ColorTools::rgbCsvToHexRGB("a,b,c"), slideio::RuntimeError);
+    EXPECT_THROW(ColorTools::rgbCsvToHexRGB(""), slideio::RuntimeError);
+}

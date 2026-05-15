@@ -293,6 +293,45 @@ std::string ColorTools::rgbaInt32StringToHexARGB(const std::string& value) {
     return RGBAToHexARGB(rgba);
 }
 
+/**
+ * Converts a comma-separated "R,G,B" decimal triplet (each value in 0..255)
+ * into a "#RRGGBB" hex string. Surrounding whitespace around each component
+ * is tolerated.
+ *
+ * @param csv String like "255,128,0".
+ * @return Hex color string in "#RRGGBB" form.
+ */
+std::string ColorTools::rgbCsvToHexRGB(const std::string& csv) {
+    std::array<int, 3> components = {0, 0, 0};
+    std::stringstream ss(csv);
+    for (int i = 0; i < 3; ++i) {
+        std::string token;
+        if (!std::getline(ss, token, ',')) {
+            RAISE_RUNTIME_ERROR << "Invalid RGB triplet, expected 'R,G,B': " << csv;
+        }
+        try {
+            components[i] = std::stoi(token);
+        }
+        catch (const std::exception&) {
+            RAISE_RUNTIME_ERROR << "Invalid RGB component in: " << csv;
+        }
+        if (components[i] < 0 || components[i] > 255) {
+            RAISE_RUNTIME_ERROR << "RGB component out of range [0,255] in: " << csv;
+        }
+    }
+    std::string trailing;
+    if (std::getline(ss, trailing, ',')) {
+        RAISE_RUNTIME_ERROR << "Too many components in RGB triplet: " << csv;
+    }
+    std::stringstream out;
+    out << "#"
+        << std::hex << std::uppercase << std::setfill('0')
+        << std::setw(2) << components[0]
+        << std::setw(2) << components[1]
+        << std::setw(2) << components[2];
+    return out.str();
+}
+
 std::string ColorTools::hexToInt32String(const std::string& hexColor) {
     const HexColorFormat format = detectHexColorFormat(hexColor);
 

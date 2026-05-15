@@ -8,6 +8,7 @@
 #include "slideio/drivers/pke/pkescene.hpp"
 #include "slideio/core/tools/tools.hpp"
 #include "slideio/core/tools/cvtools.hpp"
+#include "slideio/core/tools/color_tools.hpp"
 #include <tinyxml2.h>
 
 using namespace slideio;
@@ -149,6 +150,19 @@ void PKETiledScene::initializeChannelNames() {
                 name = xmlName->GetText();
             }
             m_channelNames.push_back(name);
+            setChannelAttribute(channel, "Name", name);
+			auto xmlColor = root->FirstChildElement("Color");
+            if (xmlColor) {
+                const char* colorText = xmlColor->GetText();
+                if (colorText != nullptr) {
+                    try {
+                        setChannelAttribute(channel, "Color",
+                            ColorTools::rgbCsvToHexRGB(colorText));
+                    } catch (const std::exception&) {
+                        setChannelAttribute(channel, "Color", colorText);
+                    }
+                }
+            }
         }
     }
 }
