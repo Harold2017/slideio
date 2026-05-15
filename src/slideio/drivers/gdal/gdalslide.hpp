@@ -34,7 +34,6 @@ namespace slideio
         std::vector<std::shared_ptr<CVScene>> m_scenes;
         std::string m_filePath;
 		std::shared_ptr<SmallImage> m_image;
-        std::string m_rawMetadata;
     };
 
 }

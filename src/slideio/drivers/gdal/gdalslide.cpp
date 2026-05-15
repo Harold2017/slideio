@@ -24,6 +24,7 @@ slideio::GDALSlide::GDALSlide(const std::string& filePath, const std::string& dr
 	}
 	if (numPages == 1) {
 		m_rawMetadata = getScene(0)->getRawMetadata();
+		m_metadataFormat = MetadataFormat::JSON;
 	}
 }
 

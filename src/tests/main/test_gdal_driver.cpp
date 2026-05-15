@@ -294,6 +294,8 @@ TEST(GDALDriver, metadataJpeg)
     EXPECT_FALSE(metadata.empty());
     json jMtd = json::parse(metadata);
     EXPECT_GT(jMtd.size(), 2);
+	auto mtd = slide->getMetadata();
+    EXPECT_EQ(mtd.size(), 20);
 }
 
 TEST(GDALDriver, multiThreadSceneAccess) {
