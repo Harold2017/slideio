@@ -51,6 +51,8 @@ void WSIScene::init(const std::string& slideFilePath, int sceneIndex, const std:
 	m_driverId = driverId;
 	m_magnification = baseFile->getMagnification();
 	m_resolution = baseFile->getResolution();
+	m_rawMetadata = baseFile->getMetadata();
+	m_metadataFormat = MetadataFormat::JSON;
     const auto& files = m_files;
 	const int numLevels = static_cast<int>(files.size());
 	m_levels.resize(numLevels);

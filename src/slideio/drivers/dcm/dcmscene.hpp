@@ -48,7 +48,6 @@ namespace slideio
         Compression getCompression() const override;
         void addFile(std::shared_ptr<DCMFile>& file);
         void init(const std::string& slideFilePath, int sceneIndex, const std::string& driverId);
-        std::string getRawMetadata() const override;
     protected:
         void prepareSliceIndices();
         void checkScene();

@@ -182,6 +182,9 @@ void DCMScene::init(const std::string& slideFilePath, int sceneIndex, const std:
     m_dataType = file->getDataType();
     m_compression = file->getCompression();
 
+    m_rawMetadata = file->getMetadata();
+    m_metadataFormat = MetadataFormat::JSON;
+
     prepareSliceIndices();
 
     m_levels.resize(1);
@@ -193,17 +196,6 @@ void DCMScene::init(const std::string& slideFilePath, int sceneIndex, const std:
     level.setMagnification(getMagnification());
     level.setScale(1.);
 }
-
-std::string DCMScene::getRawMetadata() const
-{
-    std::string metadata;
-    if(!m_files.empty()) {
-        std::shared_ptr<DCMFile> file = m_files.front();
-        metadata = file->getMetadata();
-    }
-    return metadata;
-}
-
 
 void DCMScene::extractSliceRaster(const cv::Mat& frame,
                                   const cv::Rect& blockRect,
