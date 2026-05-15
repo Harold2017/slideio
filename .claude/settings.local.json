@@ -43,7 +43,24 @@
       "Bash(build/bin/Release/slideio_tests.exe --gtest_filter=\"Metadata*\")",
       "Bash(cmake --build build --config Release --target slideio slideio_tests)",
       "Bash(Select-String -Pattern \"nlohmann|#include\")",
-      "Bash(awk NR>=8 && NR<=14 {print NR\": \"$0} *)"
+      "Bash(awk NR>=8 && NR<=14 {print NR\": \"$0} *)",
+      "Bash(awk END{print NR} *)",
+      "Bash(cmake --build build --config Release --target slideio-svs slideio_tests)",
+      "Bash(build/bin/Release/slideio_tests.exe --gtest_filter=\"SVSTools.ParseAperio*:SVSImageDriver.MetadataTreeIsStructured\")",
+      "Bash(cmake --build build --config Release --target slideio-core)",
+      "Bash(cmake --install build --config Release --prefix build/install_test)",
+      "PowerShell(& \"C:\\\\Program Files\\\\Microsoft Visual Studio\\\\2022\\\\Professional\\\\MSBuild\\\\Current\\\\Bin\\\\MSBuild.exe\" \"D:\\\\Projects\\\\slideio\\\\slideio\\\\build\\\\src\\\\slideio\\\\drivers\\\\dcm\\\\slideio-dcm.vcxproj\" /p:Configuration=Release /p:Platform=x64 /m /v:m /nologo 2>&1 | Select-Object -Last 60)",
+      "PowerShell(& \"D:\\\\Projects\\\\slideio\\\\slideio\\\\build\\\\bin\\\\Release\\\\slideio_tests.exe\" --gtest_filter=\"DCMImageDriver.getRawMetadata\")",
+      "Bash(python3 *)",
+      "Bash(py *)",
+      "PowerShell(& 'C:\\\\Program Files\\\\Microsoft Visual Studio\\\\18\\\\Community\\\\MSBuild\\\\Current\\\\Bin\\\\MSBuild.exe' 'D:\\\\Projects\\\\slideio\\\\slideio\\\\build\\\\src\\\\slideio\\\\drivers\\\\ome-tiff\\\\slideio-ometiff.vcxproj' /p:Configuration=Release /m /verbosity:minimal 2>&1 | Select-Object -Last 80)",
+      "Bash(D:/Projects/slideio/slideio/build/bin/Release/slideio_ometiff_tests.exe --gtest_filter='*channelAttributes*')",
+      "PowerShell(& 'C:\\\\Program Files\\\\Microsoft Visual Studio\\\\18\\\\Community\\\\MSBuild\\\\Current\\\\Bin\\\\MSBuild.exe' 'D:\\\\Projects\\\\slideio\\\\slideio\\\\build\\\\src\\\\slideio\\\\drivers\\\\ome-tiff\\\\slideio-ometiff.vcxproj' /p:Configuration=Release /m /verbosity:minimal 2>&1 | Select-Object -Last 30)",
+      "PowerShell(& 'C:\\\\Program Files\\\\Microsoft Visual Studio\\\\18\\\\Community\\\\MSBuild\\\\Current\\\\Bin\\\\MSBuild.exe' 'D:\\\\Projects\\\\slideio\\\\slideio\\\\build\\\\src\\\\tests\\\\main\\\\slideio_tests.vcxproj' /p:Configuration=Release /m /verbosity:minimal 2>&1 | Select-Object -Last 40)",
+      "PowerShell(& 'C:\\\\Program Files\\\\Microsoft Visual Studio\\\\18\\\\Community\\\\MSBuild\\\\Current\\\\Bin\\\\MSBuild.exe' 'D:\\\\Projects\\\\slideio\\\\slideio\\\\build\\\\src\\\\slideio\\\\drivers\\\\pke\\\\slideio-pke.vcxproj' /p:Configuration=Release /m /verbosity:minimal 2>&1 | Select-Object -Last 20)",
+      "PowerShell(& 'C:\\\\Program Files\\\\Microsoft Visual Studio\\\\18\\\\Community\\\\MSBuild\\\\Current\\\\Bin\\\\MSBuild.exe' 'D:\\\\Projects\\\\slideio\\\\slideio\\\\build\\\\src\\\\tests\\\\main\\\\slideio_tests.vcxproj' /p:Configuration=Release /m /verbosity:minimal 2>&1 | Select-Object -Last 10)",
+      "PowerShell(& 'C:\\\\Program Files\\\\Microsoft Visual Studio\\\\18\\\\Community\\\\MSBuild\\\\Current\\\\Bin\\\\MSBuild.exe' 'D:\\\\Projects\\\\slideio\\\\slideio\\\\build\\\\src\\\\tests\\\\pke\\\\slideio_pke_tests.vcxproj' /p:Configuration=Release /m /verbosity:minimal 2>&1 | Select-Object -Last 8)",
+      "Bash(D:/Projects/slideio/slideio/build/bin/Release/slideio_pke_tests.exe)"
     ]
   }
 }

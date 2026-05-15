@@ -142,13 +142,24 @@ void SCNScene::parseChannelNames(const XMLElement* xmlImage)
         for (const auto* xmlChannel = xmlChannelSettings->FirstChildElement("channel");
              xmlChannel != nullptr; xmlChannel = xmlChannel->NextSiblingElement())
         {
-            const char* name = xmlChannel->Attribute("name");
-            if (name)
-            {
-                const int channelIndex = xmlChannel->IntAttribute("index", -1);
-                if (channelIndex >= 0)
+            const int channelIndex = xmlChannel->IntAttribute("index", -1);
+            if (channelIndex >= 0) {
+                for (const auto* xmlAttribute = xmlChannel->FirstAttribute(); xmlAttribute != nullptr; xmlAttribute = xmlAttribute->Next())
                 {
-                    m_channelNames[channelIndex] = name;
+                    const char* attrName = xmlAttribute->Name();
+                    const char* attrValue = xmlAttribute->Value();
+                    if (attrName != nullptr && attrValue != nullptr) {
+                        if (strcmp(attrName, "name") == 0) {
+                            m_channelNames[channelIndex] = attrValue;
+                            setChannelAttribute(channelIndex, "Name", attrValue);
+                        }
+                        else if (strcmp(attrName, "rgb") == 0) {
+                            setChannelAttribute(channelIndex, "Color", attrValue);
+                        }
+                        else {
+                            setChannelAttribute(channelIndex, attrName, attrValue);
+                        }
+                    }
                 }
             }
         }
