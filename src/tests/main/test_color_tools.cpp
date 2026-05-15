@@ -680,3 +680,44 @@ TEST(ColorTools, hexToInt32String_RealWorld_Olive)
     // Olive: RGB(128,128,0) → 0x808000 = 8421376
     EXPECT_EQ(ColorTools::hexToInt32String("#808000"), "8421376");
 }
+
+// ============================================================
+// rgbaInt32StringToHexARGB tests (OME-TIFF Channel/@Color convention)
+// ============================================================
+
+TEST(ColorTools, rgbaInt32StringToHexARGB_OpaqueBlue)
+{
+    // 65535 = 0x0000FFFF → R=0, G=0, B=255, A=255 → #FF0000FF
+    EXPECT_EQ(ColorTools::rgbaInt32StringToHexARGB("65535"), "#FF0000FF");
+}
+
+TEST(ColorTools, rgbaInt32StringToHexARGB_NegativeValue)
+{
+    // -10092289 reinterpreted as uint32 = 0xFF6600FF
+    // R=0xFF, G=0x66, B=0x00, A=0xFF → #AARRGGBB = #FFFF6600
+    EXPECT_EQ(ColorTools::rgbaInt32StringToHexARGB("-10092289"), "#FFFF6600");
+}
+
+TEST(ColorTools, rgbaInt32StringToHexARGB_OpaqueWhite)
+{
+    // -1 = 0xFFFFFFFF → R=G=B=A=255 → #FFFFFFFF (OME-TIFF default)
+    EXPECT_EQ(ColorTools::rgbaInt32StringToHexARGB("-1"), "#FFFFFFFF");
+}
+
+TEST(ColorTools, rgbaInt32StringToHexARGB_Zero)
+{
+    // 0 = 0x00000000 → R=G=B=A=0 → #00000000
+    EXPECT_EQ(ColorTools::rgbaInt32StringToHexARGB("0"), "#00000000");
+}
+
+TEST(ColorTools, rgbaInt32StringToHexARGB_RejectsOutOfRange)
+{
+    EXPECT_THROW(ColorTools::rgbaInt32StringToHexARGB("4294967296"), slideio::RuntimeError);
+    EXPECT_THROW(ColorTools::rgbaInt32StringToHexARGB("-2147483649"), slideio::RuntimeError);
+}
+
+TEST(ColorTools, rgbaInt32StringToHexARGB_RejectsInvalid)
+{
+    EXPECT_THROW(ColorTools::rgbaInt32StringToHexARGB("not-a-number"), slideio::RuntimeError);
+    EXPECT_THROW(ColorTools::rgbaInt32StringToHexARGB(""), slideio::RuntimeError);
+}

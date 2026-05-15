@@ -11,6 +11,7 @@
 #include "slideio/drivers/ome-tiff/otstructs.hpp"
 #include "slideio/core/tools/tools.hpp"
 #include "slideio/core/tools/cvtools.hpp"
+#include "slideio/core/tools/color_tools.hpp"
 #include "slideio/imagetools/libtiff.hpp"
 #include "slideio/drivers/ome-tiff/tiffdata.hpp"
 #include <tinyxml2.h>
@@ -264,7 +265,16 @@ void OTScene::initializeChannelAttributes(tinyxml2::XMLElement* pixels) {
                         }
                         m_channelNames[channelIndex] = attrValue;
                     }
-                    setChannelAttribute(channelIndex, attrName, attrValue);
+                    if (strcmp(attrName, "Color") == 0) {
+                        try {
+                            setChannelAttribute(channelIndex, attrName,
+                                ColorTools::rgbaInt32StringToHexARGB(attrValue));
+                        } catch (const std::exception&) {
+                            setChannelAttribute(channelIndex, attrName, attrValue);
+                        }
+                    } else {
+                        setChannelAttribute(channelIndex, attrName, attrValue);
+                    }
               }
               attribute = attribute->Next();
           }

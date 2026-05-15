@@ -3,6 +3,8 @@
 // of this distribution and at http://slideio.com/license.html.
 //
 #include <cstdint>
+#include <exception>
+#include <limits>
 #include <sstream>
 #include <iomanip>
 #include <cctype>
@@ -261,6 +263,36 @@ std::array<uint8_t, 4> ColorTools::smartHexToRGBA(const std::string& hexColor, u
  * @param hexColor The hex color string
  * @return Decimal string representation of the 32-bit RGBA/RGB value
  */
+/**
+ * Converts a decimal string representation of a 32-bit signed integer whose
+ * bytes — from highest to lowest — encode R, G, B, A (OME-TIFF Channel/@Color
+ * convention) into a "#AARRGGBB" hex string.
+ *
+ * @param value Decimal string of a signed 32-bit integer (e.g. "-65536").
+ * @return Hex color string in "#AARRGGBB" form.
+ */
+std::string ColorTools::rgbaInt32StringToHexARGB(const std::string& value) {
+    long long parsed = 0;
+    try {
+        parsed = std::stoll(value);
+    }
+    catch (const std::exception&) {
+        RAISE_RUNTIME_ERROR << "Invalid integer color value: " << value;
+    }
+    if (parsed < std::numeric_limits<int32_t>::min() ||
+        parsed > std::numeric_limits<int32_t>::max()) {
+        RAISE_RUNTIME_ERROR << "Integer color value out of int32 range: " << value;
+    }
+    const uint32_t packed = static_cast<uint32_t>(static_cast<int32_t>(parsed));
+    const std::array<uint8_t, 4> rgba = {
+        static_cast<uint8_t>((packed >> 24) & 0xFF),
+        static_cast<uint8_t>((packed >> 16) & 0xFF),
+        static_cast<uint8_t>((packed >> 8) & 0xFF),
+        static_cast<uint8_t>(packed & 0xFF)
+    };
+    return RGBAToHexARGB(rgba);
+}
+
 std::string ColorTools::hexToInt32String(const std::string& hexColor) {
     const HexColorFormat format = detectHexColorFormat(hexColor);
 
