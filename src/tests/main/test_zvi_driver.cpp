@@ -49,10 +49,23 @@ TEST(ZVIImageDriver, openSlide2D)
     EXPECT_EQ(slide->getMetadataFormat(), slideio::MetadataFormat::JSON);
     EXPECT_FALSE(slide->getRawMetadata().empty());
     const slideio::Metadata& meta = slide->getMetadata();
-    EXPECT_EQ(meta["Filename"].asString(),
-              std::string("RQ26033_04310292C0004S_Calu3_amplified_100x_21Jun2012 ic zsm.zvi"));
+
+    // File-level tags remain at the root.
     EXPECT_EQ(meta["Image Width (Pixel)"].asInt(),  1480);
     EXPECT_EQ(meta["Image Height (Pixel)"].asInt(), 1132);
+
+    // Per-item tags appear under Channels[].
+    const slideio::Metadata& channels = meta["Channels"];
+    ASSERT_TRUE(channels.isArray());
+    ASSERT_EQ(channels.size(), 3u);
+
+    EXPECT_EQ(channels[0]["Channel Name"].asString(), std::string("Hoechst 33342"));
+    EXPECT_EQ(channels[1]["Channel Name"].asString(), std::string("Cy3"));
+    EXPECT_EQ(channels[2]["Channel Name"].asString(), std::string("FITC"));
+
+    // 2D image: no ZSlices nesting.
+    EXPECT_FALSE(channels[0].contains("ZSlices"));
+
     const int sceneCount = slide->getNumScenes();
     ASSERT_EQ(sceneCount, 1);
     auto scene = slide->getScene(0);
@@ -109,6 +122,24 @@ TEST(ZVIImageDriver, openSlide3D)
     EXPECT_DOUBLE_EQ(res.y, 0.0645e-6);
     auto zres = scene->getZSliceResolution();
     EXPECT_DOUBLE_EQ(zres, 0.25e-6);
+
+    EXPECT_EQ(slide->getMetadataFormat(), slideio::MetadataFormat::JSON);
+    const slideio::Metadata& meta = slide->getMetadata();
+    const slideio::Metadata& channels = meta["Channels"];
+    ASSERT_TRUE(channels.isArray());
+    // Zeiss-1-Stacked.zvi has one channel and multiple z-slices.
+    ASSERT_GE(channels.size(), 1u);
+
+    const slideio::Metadata& ch0 = channels[0];
+    ASSERT_TRUE(ch0.contains("ZSlices"));
+    const slideio::Metadata& zSlices = ch0["ZSlices"];
+    ASSERT_TRUE(zSlices.isArray());
+    EXPECT_GT(zSlices.size(), 1u);
+
+    // Channel Name (if present) is hoisted to the channel object, not duplicated per ZSlice.
+    if (ch0.contains("Channel Name")) {
+        EXPECT_FALSE(zSlices[0].contains("Channel Name"));
+    }
 }
 
 TEST(ZVIImageDriver, openSlideMosaic)
