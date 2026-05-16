@@ -7,8 +7,11 @@
 #include "slideio/drivers/zvi/zvitags.hpp"
 #include "slideio/core/metadata_internal.hpp"
 #include "slideio/core/tools/tools.hpp"
+#include "slideio/base/log.hpp"
 #include <nlohmann/json.hpp>
 #include <pole/storage.hpp>
+#include <type_traits>
+#include <variant>
 
 using namespace slideio;
 
@@ -60,20 +63,18 @@ double ZVISlide::getTFrameResolution() const
 namespace {
 
 // Converts a ZVIUtils::Variant into an nlohmann::json scalar.
-// Monostates are filtered out by readAllTags before reaching this, so the
-// 0-index branch is defensive only.
 nlohmann::json variantToJson(const ZVIUtils::Variant& v)
 {
-    switch (v.index()) {
-    case 1: return std::get<bool>(v);
-    case 2: return std::get<int32_t>(v);
-    case 3: return static_cast<int64_t>(std::get<uint32_t>(v));
-    case 4: return static_cast<int64_t>(std::get<uint64_t>(v));
-    case 5: return std::get<int64_t>(v);
-    case 6: return std::get<double>(v);
-    case 7: return std::get<std::string>(v);
-    default: return nullptr;
-    }
+    return std::visit([](const auto& x) -> nlohmann::json {
+        using T = std::decay_t<decltype(x)>;
+        if constexpr (std::is_same_v<T, std::monostate>) {
+            return nullptr;
+        } else if constexpr (std::is_same_v<T, uint32_t> || std::is_same_v<T, uint64_t>) {
+            return static_cast<int64_t>(x);
+        } else {
+            return x;
+        }
+    }, v);
 }
 
 void mergeTags(const std::vector<ZVIUtils::ZviTagEntry>& entries,
@@ -114,8 +115,8 @@ void ZVISlide::init()
 	try {
 		ZVIUtils::StreamKeeper s(doc, "/Image/Tags/Contents");
 		mergeTags(ZVIUtils::readAllTags(s, /*hasClsidHeader=*/false), root);
-	} catch (const std::exception&) {
-		// best-effort
+	} catch (const std::exception& e) {
+		SLIDEIO_LOG(WARNING) << "ZVIImageDriver: failed to read /Image/Tags/Contents: " << e.what();
 	}
 
 	// Optional root-level <Tags> stream. Standardized location per spec §2,
