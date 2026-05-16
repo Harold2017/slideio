@@ -1,6 +1,7 @@
 # ZVI File Metadata — Design
 
-**Status:** Approved 2026-05-16
+**Status:** Approved 2026-05-16 (initial flat-JSON pass). Tree-structure
+addendum approved 2026-05-16 — see §10.
 **Driver:** `src/slideio/drivers/zvi`
 **Spec source:** `documents/image_formats/zvi/ZVI_Format_2009.pdf` (V 2.0.4, June 2009)
 
@@ -228,3 +229,242 @@ change).
 - `src/slideio/core/metadata.hpp`, `metadata_internal.hpp`
 - `src/slideio/drivers/svs/svsslide.cpp::buildMetadataTree` — existing
   precedent for `builderFromJson` use.
+
+---
+
+## 10. Addendum — Tree structure (approved 2026-05-16)
+
+The initial implementation (commits `5cbfd40..7812c1d`) merged every tag id
+into a single flat JSON object. That loses per-channel and per-z/t-slice
+detail: ZVI puts per-item metadata in `[Image]/[Item(n)]/[Tags]/<Contents>`
+streams (one stream per (channel, z, t, scene) item), and even within the
+file-level `/Image/Tags/Contents` a tag id can repeat (e.g., one
+`ZVITAG_CHANNEL_NAME` per channel). A flat overwrite keeps only the last
+value. This addendum extends the design to surface that structure.
+
+### 10.1 Scope additions
+
+In scope, new in this addendum:
+
+- Per-`Item(n)` tag streams (`/Image/Item(n)/Tags/Contents`).
+- Hierarchical assembly under `"Channels" → "ZSlices" → "TFrames"`.
+- Hoisting of dimension-invariant tags up one level.
+- Repeated-id collapse to JSON array within a single stream parse.
+
+Still out of scope (unchanged):
+
+- OLE `\SummaryInformation` / `\DocumentSummaryInformation`.
+- Thumbnail extraction.
+- Scene-level metadata population.
+
+### 10.2 JSON shape
+
+The shape adapts to scene dimensions:
+
+**2D multi-channel** (e.g., `Zeiss-1-Merged.zvi`, 3 channels, 1 z, 1 t):
+
+```json
+{
+  "Title": "...",
+  "Image Width (Pixel)": 1480,
+  ...file-level tags...
+  "Channels": [
+    { "Image Index C": 0, "Channel Name": "Hoechst 33342", "Exposure Time [ms]": 50.0, ... },
+    { "Image Index C": 1, "Channel Name": "Cy3", "Exposure Time [ms]": 100.0, ... },
+    { "Image Index C": 2, "Channel Name": "FITC", "Exposure Time [ms]": 200.0, ... }
+  ]
+}
+```
+
+**3D single-channel** (z > 1):
+
+```json
+{
+  "Title": "...",
+  "Channels": [
+    {
+      "Channel Name": "Hoechst 33342",      // hoisted: same across z-slices
+      "Multichannel Colour": 4278255615,    // hoisted
+      "ZSlices": [
+        { "Image Index Z": 0, "Exposure Time [ms]": 50.0 },
+        { "Image Index Z": 1, "Exposure Time [ms]": 50.0 }
+      ]
+    }
+  ]
+}
+```
+
+**4D multi-channel** (z > 1, t > 1):
+
+```json
+{
+  "Channels": [
+    {
+      "Channel Name": "...",                 // hoisted
+      "ZSlices": [
+        {
+          "Exposure Time [ms]": 50.0,        // hoisted: same across t-frames
+          "TFrames": [
+            { "Image Index T": 0, ... },
+            { "Image Index T": 1, ... }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+Rules:
+
+- `"Channels"` is always present and always an array. Length == number of
+  channels.
+- `"ZSlices"` is present inside a channel object **only if** the scene has
+  more than one z-slice (`scene->getNumZSlices() > 1`).
+- `"TFrames"` is present inside a z-slice object **only if** the scene has
+  more than one t-frame.
+- Index of each array entry corresponds to the `ZVITAG_IMAGE_INDEX_*`
+  value, not insertion order. Missing items (sparse files) leave gaps as
+  empty objects `{}`.
+
+### 10.3 Repeated-id collapse
+
+Within a single tag stream, if the same tag id appears N > 1 times, the
+JSON value becomes an array of those values in encounter order:
+
+```text
+First occurrence:  "Channel Name": "Hoechst 33342"
+After second:      "Channel Name": ["Hoechst 33342", "Cy3"]
+After third:       "Channel Name": ["Hoechst 33342", "Cy3", "FITC"]
+```
+
+This rule applies per-stream (file-level stream is one parse;
+each item's stream is one parse). It is the only mechanism for capturing
+parallel arrays inside a single stream.
+
+### 10.4 Hoisting algorithm
+
+After per-item tags are bucketed by (C, Z, T), hoist invariant tags
+bottom-up:
+
+1. **T-hoist:** For each (c, z) bucket with multiple t-frames, for each
+   tag key present in all t-frames with bytewise-identical JSON values:
+   remove the key from each t-frame and place it on the parent z-slice
+   object.
+2. **Z-hoist:** For each c bucket with multiple z-slices (after t-hoist),
+   for each tag key present in all z-slices with bytewise-identical JSON
+   values: remove the key from each z-slice and place it on the parent
+   channel object.
+3. **No C-hoist.** Tags that happen to be identical across all channels
+   are not promoted to the root — file-level tags already live there, and
+   moving values out of `"Channels"` would conflate two different
+   sources (per-item vs file-level).
+
+"Identical" means the JSON values compare equal via `nlohmann::json::operator==`
+(strings, numbers, bools, arrays all supported). Missing-vs-present
+counts as not-identical (no hoist).
+
+### 10.5 Index extraction
+
+The `ZVIScene` already populates each `ZVIImageItem` with its (C, Z, T)
+indices (via `ZVIImageItem::readContents`, which parses the index BLOB in
+`/Image/Item(n)/Contents`). `ZVISlide::init` can re-read the same data
+independently, but to avoid duplicating the binary BLOB parser the design
+adds a narrow accessor on `ZVIScene`:
+
+```cpp
+// zviscene.hpp (public)
+const std::vector<ZVIImageItem>& getImageItems() const { return m_ImageItems; }
+```
+
+This is internal plumbing, not a metadata API change. `ZVIScene`'s own
+`getRawMetadata`/`getMetadata`/`getMetadataFormat` remain untouched.
+
+`ZVIImageItem` already exposes `getCIndex()`, `getZIndex()`, `getTIndex()`,
+and `getItemIndex()` publicly, so no new methods are needed on it.
+
+### 10.6 Tree assembly procedure
+
+In `ZVISlide::init`, replacing the current flat-merge:
+
+1. Read `/Image/Tags/Contents` via `readAllTags`, convert to a JSON
+   object with repeat-collapse → assign to root.
+2. (Optional) Read root `/Tags` via `readAllTags` if present, merge into
+   root with overwrite. (Unchanged from initial design.)
+3. For each `ZVIImageItem` in `scene->getImageItems()`:
+   - Open `/Image/Item(n)/Tags/Contents` via `StreamKeeper`.
+   - Read tags via `readAllTags(stream, false)`.
+   - Convert to a JSON object with repeat-collapse.
+   - Bucket under `(item.getCIndex(), item.getZIndex(), item.getTIndex())`.
+     Use a sparse 3-level `std::map`.
+   - Wrap reads in try/catch — corrupt per-item streams degrade
+     gracefully (item gets `{}` instead of crashing the slide).
+4. Run t-hoist, then z-hoist (per §10.4).
+5. Emit final tree under `"Channels"` per the shape rules in §10.2.
+
+### 10.7 Code organization
+
+Two new translation-unit-local helpers in `zvislide.cpp`:
+
+```cpp
+// Convert a tag-entry vector into a JSON object with repeat-collapse.
+nlohmann::json tagsToJsonObject(const std::vector<ZVIUtils::ZviTagEntry>& entries);
+
+// Hoist tags present with identical values in every child up to parent.
+// Mutates both parent and children.
+void hoistInvariantTags(nlohmann::json& parent,
+                        std::vector<nlohmann::json>& children);
+```
+
+The existing anonymous-namespace `variantToJson` and `mergeTags` are
+replaced (mergeTags's "later writes win" semantics is no longer right for
+per-stream parses — repeat-collapse replaces it).
+
+### 10.8 Tests
+
+Add:
+
+- `ZVIImageDriver_metadataHasChannelsArray` — `Zeiss-1-Merged.zvi`:
+  assert `getMetadata()["Channels"]` is an array of length 3, and each
+  entry's `"Channel Name"` matches the expected name (`Hoechst 33342`,
+  `Cy3`, `FITC`).
+- `ZVIImageDriver_metadataChannelExposure` — same fixture: assert each
+  channel has an `"Exposure Time [ms]"` field (don't pin specific values;
+  just non-null).
+- `ZVIImageDriver_metadata3DHasZSlices` — `Zeiss-1-Stacked.zvi`: assert
+  `getMetadata()["Channels"][0]["ZSlices"]` is an array of expected
+  length (numZSlices), and that the `Channel Name` tag is hoisted to the
+  channel object (i.e., NOT present in each ZSlice entry).
+- Update existing `openSlide2D` assertions to reflect the new shape (the
+  three flat-keyed asserts on `Filename` and `Image Width (Pixel)` stay
+  at root — those are file-level tags and don't move).
+
+### 10.9 Risks and edge cases
+
+- **Sparse items.** If a file has items only for some (c, z, t) tuples,
+  the corresponding array slots contain `{}`. Consumers must handle that.
+- **Hoisting on degenerate buckets.** If a channel has only one z-slice
+  (and we therefore don't emit a `"ZSlices"` array), z-hoist is a no-op
+  for that channel and per-item tags land directly on the channel object
+  — this is exactly the 2D shape in §10.2.
+- **`nlohmann::json::operator==` cost.** For hoisting, we compare every
+  key's value across N children. With ~50 tags per item and N ≈ 10
+  z-slices, that's ~500 comparisons of small JSON values. Negligible.
+- **Memory.** The sparse bucket map plus the final tree double-holds tags
+  briefly. For typical ZVI files (≤ a few hundred items) this is well
+  under a megabyte.
+- **Backwards compat within this branch.** The flat-JSON shape from the
+  initial design (`5cbfd40..7812c1d`) is itself a behavior change vs
+  master; the addendum changes the shape again before the v2.8.1 tag
+  ships. External consumers should not have written code against the
+  flat shape yet.
+
+### 10.10 Non-changes
+
+- `ZVIScene::parseImageTags` is still unchanged.
+- `ZVIImageItem::readTags` is still unchanged.
+- The `ZVITAG` enum and `getZviTagName` are unchanged.
+- `ZVIUtils::readAllTags` is unchanged — it already returns the
+  `ZviTagEntry` list this addendum needs.
+- One narrow addition to `ZVIScene`: a single const accessor
+  (`getImageItems()`) for the existing private `m_ImageItems` vector.
