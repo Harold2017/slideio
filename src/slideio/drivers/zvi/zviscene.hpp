@@ -49,6 +49,7 @@ namespace slideio
         double getMagnification() const override;
         std::string getName() const override;
         Compression getCompression() const override;
+        const std::vector<ZVIImageItem>& getImageItems() const { return m_ImageItems; }
         void readResampledBlockChannelsEx(const cv::Rect& blockRect, const cv::Size& blockSize,
             const std::vector<int>& componentIndices, int zSliceIndex, int tFrameIndex,
             cv::OutputArray output) override;
