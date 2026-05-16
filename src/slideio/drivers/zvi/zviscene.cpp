@@ -182,7 +182,7 @@ void ZVIScene::alignChannelInfoToPixelFormat()
             m_ChannelNames[0] = "blue";
             m_ChannelNames[1] = "green";
             m_ChannelNames[2] = "red";
-            m_ChannelNames[2] = "alpha";
+            m_ChannelNames[3] = "alpha";
             break;
         case ZVIPixelFormat::PF_UINT8:
         case ZVIPixelFormat::PF_INT16:
