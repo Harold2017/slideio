@@ -5,8 +5,10 @@
 #include "slideio/drivers/zvi/zviscene.hpp"
 #include "slideio/drivers/zvi/zvislide.hpp"
 #include "slideio/drivers/zvi/zvitags.hpp"
+#include <cstdio>
 #include <filesystem>
 #include <variant>
+#include <vector>
 
 #include "zviutils.hpp"
 #include "slideio/core/tools/tools.hpp"
@@ -231,6 +233,47 @@ void ZVIScene::computeSceneDimensions()
         if (!channelName.empty())
             m_ChannelNames[channelIndex] = channelName;
         m_ChannelDataTypes[channelIndex] = imageItem.getDataType();
+    }
+
+    // Expose per-channel display hints from the first image item that
+    // carried them, translated into the generic channel-attribute keys other
+    // slideio drivers (CZI, ETS/VSI, OME-TIFF, SCN, PKE) already publish.
+    // This lets downstream consumers — viewer, converters — apply per-format
+    // colors uniformly through Scene::getChannelAttributes() without knowing
+    // ZVI exists. Multichannel Colour is a Windows-style packed BGR int
+    // (0x00BBGGRR); unpack to canonical "#RRGGBB" hex. Channel 0 and white
+    // (0xFFFFFF) are treated as "unset" — both mean "no preference" in Zen.
+    std::vector<bool> channelAttrsSet(static_cast<size_t>(m_ChannelCount), false);
+    for (const auto& imageItem : m_ImageItems) {
+        const int channelIndex = imageItem.getCIndex();
+        if (channelIndex < 0 || channelIndex >= m_ChannelCount) {
+            continue;
+        }
+        if (channelAttrsSet[static_cast<size_t>(channelIndex)]) {
+            continue;
+        }
+        const int color = imageItem.getMultichannelColour();
+        if (color != 0) {
+            const unsigned int r = static_cast<unsigned int>(color        & 0xFF);
+            const unsigned int g = static_cast<unsigned int>((color >>  8) & 0xFF);
+            const unsigned int b = static_cast<unsigned int>((color >> 16) & 0xFF);
+            char buf[8];
+            std::snprintf(buf, sizeof(buf), "#%02X%02X%02X", r, g, b);
+            setChannelAttribute(channelIndex, "Color", std::string(buf));
+        }
+        const double em = imageItem.getEmissionWavelength();
+        if (em > 0.0) {
+            setChannelAttribute(channelIndex, "EmissionWavelength", em);
+        }
+        const double ex = imageItem.getExcitationWavelength();
+        if (ex > 0.0) {
+            setChannelAttribute(channelIndex, "ExcitationWavelength", ex);
+        }
+        const std::string reflector = imageItem.getReflector();
+        if (!reflector.empty()) {
+            setChannelAttribute(channelIndex, "Reflector", reflector);
+        }
+        channelAttrsSet[static_cast<size_t>(channelIndex)] = true;
     }
 
     alignChannelInfoToPixelFormat();

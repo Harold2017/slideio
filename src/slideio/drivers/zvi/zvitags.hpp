@@ -428,6 +428,13 @@ namespace slideio
         ZVITAG_DEEPVIEW_DOF                    = 65638,
         ZVITAG_DEEPVIEW_EDOF                   = 65639,
         ZVITAG_DEEPVIEW_SLIDER_NAME            = 65643,
+        // Zeiss vendor-extension tags (high-byte 0x01) carried by per-item
+        // tag streams. Values observed match standard fluorescence excitation/
+        // emission peaks for the dyes named in the same item (DAPI 359/461,
+        // FITC 490/525, Cy3 550/570), and Zen exposes them under the same
+        // labels.
+        ZVITAG_EXCITATION_WAVELENGTH           = 16777488,
+        ZVITAG_EMISSION_WAVELENGTH             = 16777489,
     };
 
     // Returns the spec name (Section 3.4 of ZVI Format Spec V 2.0.4) for a known

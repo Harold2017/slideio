@@ -423,6 +423,8 @@ const char* getZviTagName(int32_t id)
     case ZVITAG::ZVITAG_DEEPVIEW_DOF:                      return "DeepView DoF";
     case ZVITAG::ZVITAG_DEEPVIEW_EDOF:                     return "DeepView EDoF";
     case ZVITAG::ZVITAG_DEEPVIEW_SLIDER_NAME:              return "DeepView Slider Name";
+    case ZVITAG::ZVITAG_EXCITATION_WAVELENGTH:             return "ExcitationWavelength";
+    case ZVITAG::ZVITAG_EMISSION_WAVELENGTH:               return "EmissionWavelength";
     }
     return nullptr;
 }

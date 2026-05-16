@@ -120,6 +120,34 @@ void ZVIImageItem::readTags(ole::compound_document& doc)
         case ZVITAG::ZVITAG_CHANNEL_NAME:
             channelName = std::get<std::string>(tag);
             break;
+        case ZVITAG::ZVITAG_MULTICHANNEL_COLOUR:
+            // Windows-style packed BGR (0x00BBGGRR). Drivers may report it
+            // as signed or unsigned; both shapes map to the same 32 bits.
+            if (auto* p = std::get_if<int32_t>(&tag)) {
+                m_MultichannelColour = *p;
+            } else if (auto* p = std::get_if<uint32_t>(&tag)) {
+                m_MultichannelColour = static_cast<int>(*p);
+            }
+            break;
+        case ZVITAG::ZVITAG_EMISSION_WAVELENGTH:
+            if (auto* p = std::get_if<int32_t>(&tag)) {
+                m_EmissionWavelength = static_cast<double>(*p);
+            } else if (auto* p = std::get_if<double>(&tag)) {
+                m_EmissionWavelength = *p;
+            }
+            break;
+        case ZVITAG::ZVITAG_EXCITATION_WAVELENGTH:
+            if (auto* p = std::get_if<int32_t>(&tag)) {
+                m_ExcitationWavelength = static_cast<double>(*p);
+            } else if (auto* p = std::get_if<double>(&tag)) {
+                m_ExcitationWavelength = *p;
+            }
+            break;
+        case ZVITAG::ZVITAG_REFLECTOR:
+            if (auto* p = std::get_if<std::string>(&tag)) {
+                m_Reflector = *p;
+            }
+            break;
         }
     }
 
