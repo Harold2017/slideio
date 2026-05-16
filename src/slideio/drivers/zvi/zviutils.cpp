@@ -209,6 +209,19 @@ ZVIUtils::Variant ZVIUtils::readItem(ole::basic_stream& stream, bool skipUnusedT
     case VT_DATE:
         offset = 8;
         break;
+    case VT_BLOB:
+        stream.read((char*)&offset, 4);
+        offset = Endian::fromLittleEndianToNative(offset);
+        break;
+    case VT_STORED_OBJECT:
+        // {Streamed BSTR}: 16-bit length followed by 'length' wchar_t units.
+        {
+            uint16_t len16 = 0;
+            stream.read((char*)&len16, 2);
+            len16 = Endian::fromLittleEndianToNative(len16);
+            offset = static_cast<uint32_t>(len16) * 2u;
+        }
+        break;
     default:
         RAISE_RUNTIME_ERROR << "ZVIImageDriver: Unsuported item type: " << type;
     }
@@ -300,4 +313,28 @@ int ZVIUtils::channelCountFromPixelFormat(const ZVIPixelFormat pixelFormat)
         RAISE_RUNTIME_ERROR << "ZVIImageDriver: unexpected pixel format: " << static_cast<int>(pixelFormat);
     }
     return channels;
+}
+
+std::vector<ZVIUtils::ZviTagEntry> ZVIUtils::readAllTags(
+    ole::basic_stream& stream, bool hasClsidHeader)
+{
+    if (hasClsidHeader) {
+        // 128-bit CLSID — raw, not a typed token.
+        stream.seek(16, std::ios::cur);
+    }
+    const int32_t version = readIntItem(stream);
+    (void)version; // not used; spec value is informational.
+    const int32_t count = readIntItem(stream);
+    std::vector<ZviTagEntry> entries;
+    entries.reserve(count > 0 ? static_cast<size_t>(count) : 0u);
+    for (int32_t i = 0; i < count; ++i) {
+        Variant value = readItem(stream);
+        const int32_t id = readIntItem(stream);
+        skipItem(stream); // {Attribute} — no longer used per spec.
+        if (value.index() == 0) {
+            continue; // std::monostate: VT_EMPTY/VT_NULL/blob/object — drop.
+        }
+        entries.push_back(ZviTagEntry{ id, std::move(value) });
+    }
+    return entries;
 }

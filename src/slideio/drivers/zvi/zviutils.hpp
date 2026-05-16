@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <string>
 #include <variant>
+#include <vector>
 
 #if defined(_MSC_VER)
 #pragma warning( push )
@@ -68,6 +69,24 @@ namespace slideio
             VT_BYREF = 0x4000
         } VARENUM;
         typedef std::variant<std::monostate, bool, int32_t, uint32_t, uint64_t, int64_t, double, std::string> Variant;
+
+        struct ZviTagEntry {
+            int32_t id;
+            Variant value;
+        };
+
+        // Reads a ZVI Tags stream:
+        //   - hasClsidHeader=true:  16 raw bytes (CLSID) precede {Version}{Count}.
+        //                           Use this for the root-level <Tags> stream.
+        //   - hasClsidHeader=false: stream starts directly with {Version}{Count}.
+        //                           Use this for [Image]/[Tags]/<Contents> and
+        //                           [Item(n)]/[Tags]/<Contents>.
+        // Returns one ZviTagEntry per (Value, TagID, Attribute) triple. Entries
+        // whose Value variant is monostate (VT_EMPTY / unsupported types) are
+        // dropped. {Attribute} is consumed and discarded.
+        std::vector<ZviTagEntry> SLIDEIO_ZVI_EXPORTS readAllTags(
+            ole::basic_stream& stream, bool hasClsidHeader);
+
         void SLIDEIO_ZVI_EXPORTS skipItem(ole::basic_stream& stream);
         void SLIDEIO_ZVI_EXPORTS skipItems(ole::basic_stream& stream, int count);
         int32_t SLIDEIO_ZVI_EXPORTS readIntItem(ole::basic_stream& stream);

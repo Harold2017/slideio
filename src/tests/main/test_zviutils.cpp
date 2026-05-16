@@ -142,3 +142,25 @@ TEST(ZVITags, getZviTagName_unknown)
     EXPECT_EQ(slideio::getZviTagName(99999), nullptr);
     EXPECT_EQ(slideio::getZviTagName(0),     nullptr);
 }
+
+TEST(ZVIUtils, readAllTags_imageTagsContents)
+{
+    std::string file_path = TestTools::getTestImagePath("zvi","Zeiss-1-Merged.zvi");
+    ole::compound_document doc(file_path);
+    ASSERT_TRUE(doc.good());
+    ZVIUtils::StreamKeeper stream(doc, "/Image/Tags/Contents");
+    std::vector<ZVIUtils::ZviTagEntry> entries =
+        ZVIUtils::readAllTags(stream, /*hasClsidHeader=*/false);
+    ASSERT_FALSE(entries.empty());
+
+    bool hasFilename = false;
+    for (const auto& e : entries) {
+        if (e.id == static_cast<int32_t>(ZVITAG::ZVITAG_FILE_NAME)) {
+            ASSERT_EQ(e.value.index(), 7u); // std::string is index 7 in the Variant
+            EXPECT_FALSE(std::get<std::string>(e.value).empty());
+            hasFilename = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(hasFilename);
+}
