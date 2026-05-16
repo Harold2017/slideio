@@ -156,7 +156,7 @@ TEST(ZVIUtils, readAllTags_imageTagsContents)
     bool hasFilename = false;
     for (const auto& e : entries) {
         if (e.id == static_cast<int32_t>(ZVITAG::ZVITAG_FILE_NAME)) {
-            ASSERT_EQ(e.value.index(), 7u); // std::string is index 7 in the Variant
+            ASSERT_TRUE(std::holds_alternative<std::string>(e.value));
             EXPECT_FALSE(std::get<std::string>(e.value).empty());
             hasFilename = true;
             break;

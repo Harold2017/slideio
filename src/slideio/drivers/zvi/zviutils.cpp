@@ -210,17 +210,9 @@ ZVIUtils::Variant ZVIUtils::readItem(ole::basic_stream& stream, bool skipUnusedT
         offset = 8;
         break;
     case VT_BLOB:
+    case VT_STORED_OBJECT:
         stream.read((char*)&offset, 4);
         offset = Endian::fromLittleEndianToNative(offset);
-        break;
-    case VT_STORED_OBJECT:
-        // {Streamed BSTR}: 16-bit length followed by 'length' wchar_t units.
-        {
-            uint16_t len16 = 0;
-            stream.read((char*)&len16, 2);
-            len16 = Endian::fromLittleEndianToNative(len16);
-            offset = static_cast<uint32_t>(len16) * 2u;
-        }
         break;
     default:
         RAISE_RUNTIME_ERROR << "ZVIImageDriver: Unsuported item type: " << type;
@@ -325,8 +317,11 @@ std::vector<ZVIUtils::ZviTagEntry> ZVIUtils::readAllTags(
     const int32_t version = readIntItem(stream);
     (void)version; // not used; spec value is informational.
     const int32_t count = readIntItem(stream);
+    if (count < 0 || count > 100000) {
+        return {};
+    }
     std::vector<ZviTagEntry> entries;
-    entries.reserve(count > 0 ? static_cast<size_t>(count) : 0u);
+    entries.reserve(static_cast<size_t>(count));
     for (int32_t i = 0; i < count; ++i) {
         Variant value = readItem(stream);
         const int32_t id = readIntItem(stream);
