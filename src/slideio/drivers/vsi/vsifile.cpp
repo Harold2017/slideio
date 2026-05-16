@@ -37,6 +37,37 @@ static std::vector<std::string> splitVectorValues(const std::string& value) {
     return tokens;
 }
 
+// Parse a value string produced by VSITools::extractTagValue for an RGB/BGR
+// triple — formatted as "red = R, green = G, blue = B" (optionally followed by
+// " [N entries]" when the tag was an LUT array, in which case R/G/B are the
+// last/tint entry). Returns false if the format does not match.
+static bool parseRgbTripleFromValue(const std::string& s, uint8_t& r, uint8_t& g, uint8_t& b) {
+    const auto extract = [&s](const std::string& key, int& out) -> bool {
+        const auto pos = s.find(key);
+        if (pos == std::string::npos) return false;
+        size_t p = pos + key.size();
+        while (p < s.size() && (s[p] == ' ' || s[p] == '=')) ++p;
+        try {
+            size_t end = 0;
+            out = std::stoi(s.substr(p), &end);
+        } catch (const std::exception&) {
+            return false;
+        }
+        return true;
+    };
+    int ri = 0, gi = 0, bi = 0;
+    if (!extract("red", ri) || !extract("green", gi) || !extract("blue", bi)) {
+        return false;
+    }
+    if (ri < 0) ri = 0; if (ri > 255) ri = 255;
+    if (gi < 0) gi = 0; if (gi > 255) gi = 255;
+    if (bi < 0) bi = 0; if (bi > 255) bi = 255;
+    r = static_cast<uint8_t>(ri);
+    g = static_cast<uint8_t>(gi);
+    b = static_cast<uint8_t>(bi);
+    return true;
+}
+
 std::string slideio::vsi::getStackTypeName(StackType type) {
     switch (type) {
     case StackType::DEFAULT_IMAGE:
@@ -253,9 +284,54 @@ void VSIFile::extractVolumesFromMetadata() {
                                 }
                             }
                             if (itc->secondTag >= 0) {
+                                const int channelIndex = itc->secondTag;
                                 auto channelName = itc->findChild(Tag::CHANNEL_NAME);
                                 if (channelName) {
-                                    volumeObj->setChannelName(itc->secondTag, channelName->value);
+                                    volumeObj->setChannelName(channelIndex, channelName->value);
+                                }
+
+                                // Display colour: prefer DISPLAY_COLOR (scalar BYTE[3])
+                                // when present; otherwise fall back to the last/tint
+                                // entry of the STACK_DISPLAY_LUT gradient. Both arrive
+                                // as "red = R, green = G, blue = B" strings produced by
+                                // VSITools::extractTagValue.
+                                auto applyColorFromValue = [&](const std::string& valueStr) {
+                                    uint8_t r = 0, g = 0, b = 0;
+                                    if (parseRgbTripleFromValue(valueStr, r, g, b)) {
+                                        volumeObj->setChannelColor(channelIndex, r, g, b);
+                                        return true;
+                                    }
+                                    return false;
+                                };
+                                bool colorApplied = false;
+                                if (const TagInfo* displayColor = itc->findChild(Tag::DISPLAY_COLOR)) {
+                                    colorApplied = applyColorFromValue(displayColor->value);
+                                }
+                                if (!colorApplied) {
+                                    if (const TagInfo* lut = itc->findChild(Tag::STACK_DISPLAY_LUT)) {
+                                        // Subvolume with a VALUE child holding the
+                                        // serialised RGB/BGR triple (the last entry
+                                        // when the LUT carries multiple entries).
+                                        if (const TagInfo* lutValue = lut->findChild(Tag::VALUE)) {
+                                            colorApplied = applyColorFromValue(lutValue->value);
+                                        }
+                                    }
+                                }
+
+                                // Emission wavelength (nm). Stored as a subvolume
+                                // whose VALUE child holds the number as a string.
+                                if (const TagInfo* wavelength = itc->findChild(Tag::CHANNEL_WAVELENGTH)) {
+                                    if (const TagInfo* wlValue = wavelength->findChild(Tag::VALUE)) {
+                                        try {
+                                            const double nm = std::stod(wlValue->value);
+                                            if (nm > 0.0) {
+                                                volumeObj->setChannelEmissionWavelength(channelIndex, nm);
+                                            }
+                                        }
+                                        catch (const std::exception&) {
+                                            // Ignore unparseable wavelength values.
+                                        }
+                                    }
                                 }
                             }
                         }
