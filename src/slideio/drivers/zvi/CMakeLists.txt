@@ -30,13 +30,15 @@ find_package(glog)
 find_package(OpenCV)
 find_package(ZLIB)
 find_package(pole)
+find_package(nlohmann_json REQUIRED)
 
-target_link_libraries(${LIBRARY_NAME} 
+target_link_libraries(${LIBRARY_NAME}
    SQLite::SQLite3
    glog::glog
    opencv::opencv
    ZLIB::ZLIB
    pole::pole
+   nlohmann_json::nlohmann_json
 )
 
 SOURCE_GROUP_BY_FOLDER(SOURCE_FILES)

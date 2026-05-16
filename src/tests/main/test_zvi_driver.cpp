@@ -15,6 +15,7 @@
 #include "slideio/drivers/zvi/zviimagedriver.hpp"
 #include "slideio/imagetools/imagetools.hpp"
 #include "slideio/slideio/slideio.hpp"
+#include "slideio/core/metadata.hpp"
 
 using namespace slideio;
 
@@ -45,7 +46,13 @@ TEST(ZVIImageDriver, openSlide2D)
     std::string filePath = TestTools::getTestImagePath("zvi", "Zeiss-1-Merged.zvi");
     std::shared_ptr<slideio::CVSlide> slide = driver.openFile(filePath);
     ASSERT_TRUE(slide.get() != nullptr);
-	EXPECT_EQ(slide->getMetadataFormat(), slideio::MetadataFormat::None);
+    EXPECT_EQ(slide->getMetadataFormat(), slideio::MetadataFormat::JSON);
+    EXPECT_FALSE(slide->getRawMetadata().empty());
+    const slideio::Metadata& meta = slide->getMetadata();
+    EXPECT_EQ(meta["Filename"].asString(),
+              std::string("RQ26033_04310292C0004S_Calu3_amplified_100x_21Jun2012 ic zsm.zvi"));
+    EXPECT_EQ(meta["Image Width (Pixel)"].asInt(),  1480);
+    EXPECT_EQ(meta["Image Height (Pixel)"].asInt(), 1132);
     const int sceneCount = slide->getNumScenes();
     ASSERT_EQ(sceneCount, 1);
     auto scene = slide->getScene(0);

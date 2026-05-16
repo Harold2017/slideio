@@ -27,6 +27,8 @@ namespace slideio
         Resolution getResolution() const;
         double getZSliceResolution() const;
         double getTFrameResolution() const;
+    protected:
+        MetadataBuilder buildMetadataTree() const override;
     private:
         void init();
     private:
