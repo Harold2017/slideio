@@ -126,3 +126,19 @@ TEST(ZVIUtils, readItem)
 #if defined(_MSC_VER)
 #pragma warning(pop)
 #endif
+
+#include "slideio/drivers/zvi/zvitags.hpp"
+
+TEST(ZVITags, getZviTagName_known)
+{
+    EXPECT_STREQ(slideio::getZviTagName(1537), "Title");
+    EXPECT_STREQ(slideio::getZviTagName(1538), "Author");
+    EXPECT_STREQ(slideio::getZviTagName(1553), "Filename");
+    EXPECT_STREQ(slideio::getZviTagName(769),  "Scale Factor For X");
+}
+
+TEST(ZVITags, getZviTagName_unknown)
+{
+    EXPECT_EQ(slideio::getZviTagName(99999), nullptr);
+    EXPECT_EQ(slideio::getZviTagName(0),     nullptr);
+}
