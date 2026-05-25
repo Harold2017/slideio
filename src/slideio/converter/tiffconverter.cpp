@@ -143,6 +143,9 @@ std::string TiffConverter::createOMETiffDescription() const {
     ome->SetAttribute("xsi:schemaLocation",
                       "http://www.openmicroscopy.org/Schemas/OME/2016-06 http://www.openmicroscopy.org/Schemas/OME/2016-06/ome.xsd");
     doc.InsertFirstChild(ome);
+    // Channels are assumed to be always interleaved
+    // They can be saved as 3 channels jpeg (real interleaved)
+    // or each channle saved as a channel per directory (set interleaved to true for compatibility with QuPath)
     bool interleaved = true;
     auto rect = m_parameters.getRect();
     const int sizeX = rect.width;
@@ -167,16 +170,6 @@ std::string TiffConverter::createOMETiffDescription() const {
     ome->InsertEndChild(image);
 
     auto* pixels = doc.NewElement("Pixels");
-
-    // Channels
-    if (!m_pages.empty()) {
-        const auto& firstPage = m_pages.front();
-        const auto& channelRange = firstPage.getChannelRange();
-        if ((channelRange.size() == 3)
-            && (m_scene->getChannelDataType(channelRange.start) == DataType::DT_Byte)) {
-            interleaved = true;
-        }
-    }
 
     int id = 0;
     const auto& sceneChannelRange = m_parameters.getChannelRange();
