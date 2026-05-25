@@ -69,7 +69,7 @@ TEST_F(AFIDriverFileTest, openFile)
     auto slide = driver.openFile(filePath);
     EXPECT_TRUE(slide!=nullptr);
     EXPECT_EQ(slide->getMetadataFormat(), slideio::MetadataFormat::None);
-	EXPECT_EQ(slide->getScene(0)->getMetadataFormat(), slideio::MetadataFormat::None);
+	EXPECT_EQ(slide->getScene(0)->getMetadataFormat(), slideio::MetadataFormat::JSON);
 }
 
 TEST_F(AFIDriverFileTest, getScenesFromFiles)

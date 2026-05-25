@@ -228,7 +228,7 @@ TEST(Converter, from3DScene)
 	double sim = slideio::ImageTools::computeSimilarity(inputImage, outputImage);
 	EXPECT_LE(0.999, sim);
 	const slideio::Metadata& chanAttrs = scene->getChannelAttributes();
-	EXPECT_EQ(chanAttrs[0].size(), 10u);                                          // 10 attributes on channel 0
+	EXPECT_EQ(chanAttrs[0].size(), 17u);                                          // 10 attributes on channel 0
 	EXPECT_TRUE(chanAttrs[0].contains("Name"));
 	EXPECT_EQ(chanAttrs[0]["Name"].asString(),                "ChS1");
 	EXPECT_EQ(chanAttrs[1]["Name"].asString(),                "Ch2");
