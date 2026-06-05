@@ -55,6 +55,12 @@ MetadataFormat Slide::getMetadataFormat() const {
 	return m_slide->getMetadataFormat();
 }
 
+const slideio::Metadata& slideio::Slide::getMetadata() const
+{
+    SLIDEIO_LOG(INFO) << "Slide::getMetadata ";
+    return m_slide->getMetadata();
+}
+
 const std::list<std::string>& Slide::getAuxImageNames() const
 {
     SLIDEIO_LOG(INFO) << "Slide::getAuxImageNames "; 

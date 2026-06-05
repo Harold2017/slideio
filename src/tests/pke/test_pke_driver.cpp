@@ -11,6 +11,8 @@
 #include "slideio/drivers/pke/pkeslide.hpp"
 #include "slideio/imagetools/smallimage.hpp"
 #include "slideio/slideio/imagedrivermanager.hpp"
+#include "slideio/slideio/slide.hpp"
+#include "slideio/slideio/slideio.hpp"
 
 
 namespace slideio
@@ -70,6 +72,17 @@ TEST_F(PKEImageDriverTests, openBrightFieldFile) {
             EXPECT_EQ(Size(0,0), levelInfo->getTileSize());
         }
     }
+}
+
+TEST_F(PKEImageDriverTests, openSlideAutoDriver) {
+    std::string filePath = TestTools::getFullTestImagePath("pke", "openmicroscopy/PKI_scans/HandEcompressed_Scan1.qptiff");
+    std::shared_ptr<slideio::Slide> slide = slideio::openSlide(filePath, "AUTO");
+    ASSERT_TRUE(slide != nullptr);
+    ASSERT_EQ(1, slide->getNumScenes());
+    std::shared_ptr<slideio::Scene> scene = slide->getScene(0);
+    ASSERT_TRUE(scene != nullptr);
+    EXPECT_EQ("HandEcompressed", scene->getName());
+    EXPECT_EQ(std::make_tuple(0, 0, 30720, 26640), scene->getRect());
 }
 
 TEST_F(PKEImageDriverTests, openFLFile) {
@@ -408,4 +421,26 @@ TEST_F(PKEImageDriverTests, multiThreadSceneAccess) {
     std::string filePath = TestTools::getFullTestImagePath("pke", "openmicroscopy/PKI_scans/LuCa-7color_Scan1.qptiff");
     slideio::PKEImageDriver driver;
     TestTools::multiThreadedTest(filePath, driver);
+}
+
+TEST_F(PKEImageDriverTests, getDriverId)
+{
+    if (!TestTools::isFullTestEnabled()) {
+        GTEST_SKIP() << "Skip private test because full dataset is not enabled";
+    }
+
+    std::string filePath = TestTools::getFullTestImagePath("pke", "openmicroscopy/PKI_scans/LuCa-7color_Scan1.qptiff");
+	auto slide = slideio::openSlide(filePath, "AUTO");
+    ASSERT_TRUE(slide);
+    EXPECT_EQ("QPTIFF", slide->getDriverId());
+    const int numScenes = slide->getNumScenes();
+    EXPECT_EQ(1, numScenes);
+    for (int iScene = 0; iScene < numScenes; ++iScene) {
+        auto scene = slide->getScene(iScene);
+        EXPECT_TRUE(scene.get() != nullptr);
+		auto cvScene = scene->getCVScene();
+        EXPECT_EQ(iScene, cvScene->getSceneIndex());
+        EXPECT_EQ(filePath, cvScene->getFilePath());
+		EXPECT_EQ("QPTIFF", cvScene->getDriverId());
+    }
 }

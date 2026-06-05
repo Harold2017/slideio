@@ -4,6 +4,7 @@
 #pragma once
 
 #include "slideio/slideio/slideio_def.hpp"
+#include "slideio/core/metadata.hpp"
 #include <string>
 #include <memory>
 #include <list>
@@ -51,6 +52,8 @@ namespace slideio
          *
          *Default: empty list.*/
 		MetadataFormat getMetadataFormat() const;
+        /**@brief returns metadata as a navigable tree. Built lazily on first call. */
+        const Metadata& getMetadata() const;
         const std::list<std::string>& getAuxImageNames() const;
         /**@brief The method returns number of auxiliary images contained in the slide.*/
         virtual int getNumAuxImages() const;

@@ -504,15 +504,11 @@ void TiffTools::scanTiffDirTags(libtiff::TIFF* tiff, int dirIndex, int64_t dirOf
     dir.stripSize = (int)libtiff::TIFFStripSize(tiff);
     dir.dataType = retrieveTiffDataType(tiff);
     uint16_t YCbCrSubsampling[2] = {2, 2};
-    libtiff::TIFFGetField(tiff, TIFFTAG_YCBCRSUBSAMPLING, &YCbCrSubsampling[0], &YCbCrSubsampling[0]);
+    libtiff::TIFFGetField(tiff, TIFFTAG_YCBCRSUBSAMPLING, &YCbCrSubsampling[0], &YCbCrSubsampling[1]);
     dir.YCbCrSubsampling[0] = YCbCrSubsampling[0];
     dir.YCbCrSubsampling[1] = YCbCrSubsampling[1];
 
     if (units == RESUNIT_INCH && resx > 0 && resy > 0) {
-        dir.res.x = 0.01 / resx;
-        dir.res.y = 0.01 / resy;
-    }
-    else if (units == RESUNIT_INCH && resx > 0 && resy > 0) {
         dir.res.x = 0.0254 / resx;
         dir.res.y = 0.0254 / resy;
     }
@@ -779,8 +775,8 @@ void TiffTools::readRegularTile(libtiff::TIFF* hFile, const TiffDirectory& dir, 
         else {
             std::vector<cv::Mat> channelRasters;
             channelRasters.resize(channelIndices.size());
-            for (int channelIndex : channelIndices) {
-                cv::extractChannel(tileRaster, channelRasters[channelIndex], channelIndices[channelIndex]);
+            for (int i = 0; i < static_cast<int>(channelIndices.size()); ++i) {
+                cv::extractChannel(tileRaster, channelRasters[i], channelIndices[i]);
             }
             cv::merge(channelRasters, output);
         }
@@ -867,16 +863,24 @@ void TiffTools::readNotRGBTile(libtiff::TIFF* hFile, const TiffDirectory& dir, i
         cv::merge(channelRasters, flipped);
     }
     else if (channelIndices.size() == 1) {
+        if(channelIndices[0] < 0 || channelIndices[0] >= static_cast<int>(channelMapping.size())) {
+            RAISE_RUNTIME_ERROR << "TiffTools::readNotRGBTile: channel index out of range: "
+                << channelIndices[0] << ". Valid range is [0, " << channelMapping.size() - 1 << "]";
+        }
         const int correctedIndex = channelMapping[channelIndices[0]]; // correct the channel index for big endian
         cv::extractChannel(tileRaster, flipped, correctedIndex);
     }
     else {
         std::vector<cv::Mat> channelRasters;
         channelRasters.resize(channelIndices.size());
-        for (int channelIndex : channelIndices) {
-            const int correctedIndex = channelMapping[channelIndices[channelIndex]];
+        for (int i = 0; i < static_cast<int>(channelIndices.size()); ++i) {
+            if(channelIndices[i] < 0 || channelIndices[i] >= static_cast<int>(channelMapping.size())) {
+                RAISE_RUNTIME_ERROR << "TiffTools::readNotRGBTile: channel index out of range: "
+                    << channelIndices[i] << ". Valid range is [0, " << channelMapping.size() - 1 << "]";
+            }
+            const int correctedIndex = channelMapping[channelIndices[i]];
             // correct the channel index for big endian
-            cv::extractChannel(tileRaster, channelRasters[channelIndex], correctedIndex);
+            cv::extractChannel(tileRaster, channelRasters[i], correctedIndex);
         }
         cv::merge(channelRasters, flipped);
     }
@@ -915,7 +919,7 @@ void TiffTools::setTags(libtiff::TIFF* tiff, const TiffDirectory& dir) {
     libtiff::TIFFSetField(tiff, TIFFTAG_TILEWIDTH, dir.tileWidth);
     libtiff::TIFFSetField(tiff, TIFFTAG_TILELENGTH, dir.tileHeight);;
     libtiff::TIFFSetField(tiff, TIFFTAG_IMAGEDESCRIPTION, dir.description.c_str());
-    libtiff::TIFFSetField(tiff, TIFFTAG_PLANARCONFIG, ((numChannels == 1) ? 2 : 1));
+    libtiff::TIFFSetField(tiff, TIFFTAG_PLANARCONFIG, 1);
     Resolution res = dir.res;
     double rx = (res.x > 0) ? 0.01 / res.x : 0.;
     double ry = (res.y > 0.) ? 0.01 / res.y : 0.;
@@ -928,6 +932,17 @@ void TiffTools::setTags(libtiff::TIFF* tiff, const TiffDirectory& dir) {
     uint16_t phm = computeDirectoryPhotometric(dir);
     libtiff::TIFFSetField(tiff, TIFFTAG_PHOTOMETRIC, phm);
     libtiff::TIFFSetField(tiff, TIFFTAG_JPEGQUALITY, dir.compressionQuality);
+    if (dir.slideioCompression == Compression::Jpeg) {
+        // Tiles are written via TIFFWriteRawTile with abbreviated JPEG streams
+        // (no DQT/DHT). Provide the shared quantization/Huffman tables once
+        // here so libtiff emits them into TIFFTAG_JPEGTABLES on directory
+        // finalize. Tables must match what jpeglibEncodeAbbreviated produces
+        // for (channels, quality).
+        std::vector<uint8_t> jpegTables;
+        ImageTools::computeJpegTables(numChannels, dir.compressionQuality, jpegTables);
+        libtiff::TIFFSetField(tiff, TIFFTAG_JPEGTABLES,
+            static_cast<uint32_t>(jpegTables.size()), jpegTables.data());
+    }
     libtiff::TIFFSetField(tiff, TIFFTAG_SOFTWARE, dir.software.c_str());
     libtiff::TIFFSetField(tiff, TIFFTAG_SUBFILETYPE, dir.subFileType);
 	uint16_t sampleFormat = 0;
@@ -1012,6 +1027,14 @@ std::string TiffTools::readStringTag(libtiff::TIFF* tiff, uint16_t tag) {
 
 int TiffTools::getNumberOfDirectories(libtiff::TIFF* tiff) {
     return libtiff::TIFFNumberOfDirectories(tiff);
+}
+
+void TiffTools::writeRawTile(libtiff::TIFF* tiff, int x, int y, const uint8_t* data, int size) {
+    const uint32_t tile = libtiff::TIFFComputeTile(tiff, x, y, 0, 0);
+    auto written = libtiff::TIFFWriteRawTile(tiff, tile, (void*)data, size);
+    if (written <= 0) {
+        RAISE_RUNTIME_ERROR << "Error by writing tiff tile";
+	}
 }
 
 void TiffTools::setCurrentDirectory(libtiff::TIFF* hFile, const TiffDirectory& dir) {

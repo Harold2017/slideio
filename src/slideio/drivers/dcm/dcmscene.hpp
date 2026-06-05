@@ -23,6 +23,15 @@ namespace slideio
     public:
         DCMScene();
         std::string getFilePath() const override;
+		int getSceneIndex() const override {
+            return m_sceneIndex;
+		}
+        const std::string& getDriverId() const override {
+            return m_driverId;
+        }
+        void setDriverId(const std::string& driverId) {
+            m_driverId = driverId;
+		}
         cv::Rect getRect() const override;
         int getNumChannels() const override;
         int getNumZSlices() const override;
@@ -38,8 +47,7 @@ namespace slideio
         std::string getName() const override;
         Compression getCompression() const override;
         void addFile(std::shared_ptr<DCMFile>& file);
-        void init();
-        std::string getRawMetadata() const override;
+        void init(const std::string& slideFilePath, int sceneIndex, const std::string& driverId);
     protected:
         void prepareSliceIndices();
         void checkScene();
@@ -58,8 +66,10 @@ namespace slideio
         int m_numFrames = 1;
         int m_numChannels = 0;
         std::string m_filePath;
+		int m_sceneIndex = 0;
         DataType m_dataType = DataType::DT_Unknown;
         Compression m_compression = Compression::Unknown;
+        std::string m_driverId;
     };
 }
 

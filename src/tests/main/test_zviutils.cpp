@@ -126,3 +126,41 @@ TEST(ZVIUtils, readItem)
 #if defined(_MSC_VER)
 #pragma warning(pop)
 #endif
+
+#include "slideio/drivers/zvi/zvitags.hpp"
+
+TEST(ZVITags, getZviTagName_known)
+{
+    EXPECT_STREQ(slideio::getZviTagName(1537), "Title");
+    EXPECT_STREQ(slideio::getZviTagName(1538), "Author");
+    EXPECT_STREQ(slideio::getZviTagName(1553), "Filename");
+    EXPECT_STREQ(slideio::getZviTagName(769),  "Scale Factor For X");
+}
+
+TEST(ZVITags, getZviTagName_unknown)
+{
+    EXPECT_EQ(slideio::getZviTagName(99999), nullptr);
+    EXPECT_EQ(slideio::getZviTagName(0),     nullptr);
+}
+
+TEST(ZVIUtils, readAllTags_imageTagsContents)
+{
+    std::string file_path = TestTools::getTestImagePath("zvi","Zeiss-1-Merged.zvi");
+    ole::compound_document doc(file_path);
+    ASSERT_TRUE(doc.good());
+    ZVIUtils::StreamKeeper stream(doc, "/Image/Tags/Contents");
+    std::vector<ZVIUtils::ZviTagEntry> entries =
+        ZVIUtils::readAllTags(stream, /*hasClsidHeader=*/false);
+    ASSERT_FALSE(entries.empty());
+
+    bool hasFilename = false;
+    for (const auto& e : entries) {
+        if (e.id == static_cast<int32_t>(ZVITAG::ZVITAG_FILE_NAME)) {
+            ASSERT_TRUE(std::holds_alternative<std::string>(e.value));
+            EXPECT_FALSE(std::get<std::string>(e.value).empty());
+            hasFilename = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(hasFilename);
+}

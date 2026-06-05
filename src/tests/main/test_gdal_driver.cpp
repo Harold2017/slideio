@@ -294,6 +294,8 @@ TEST(GDALDriver, metadataJpeg)
     EXPECT_FALSE(metadata.empty());
     json jMtd = json::parse(metadata);
     EXPECT_GT(jMtd.size(), 2);
+	auto mtd = slide->getMetadata();
+    EXPECT_EQ(mtd.size(), 20);
 }
 
 TEST(GDALDriver, multiThreadSceneAccess) {
@@ -305,4 +307,25 @@ TEST(GDALDriver, multiThreadSceneAccess) {
     std::string filePath = TestTools::getTestImagePath("gdal", "Airbus_Pleiades_50cm_8bit_RGB_Yogyakarta.jpg");
     slideio::GDALImageDriver driver;
     TestTools::multiThreadedTest(filePath, driver);
+}
+
+TEST(GDALDriver, getSceneIndex)
+{
+    if (!TestTools::isFullTestEnabled()) {
+        GTEST_SKIP() <<
+            "Skip the test because full dataset is not enabled";
+    }
+    std::string filePath = TestTools::getTestImagePath("gdal", "Airbus_Pleiades_50cm_8bit_RGB_Yogyakarta.jpg");
+    auto slide = slideio::openSlide(filePath, "AUTO");
+    ASSERT_TRUE(slide);
+    EXPECT_EQ("GDAL", slide->getDriverId());
+    const int numScenes = slide->getNumScenes();
+    EXPECT_EQ(1, numScenes);
+    for (int iScene = 0; iScene < numScenes; ++iScene) {
+        std::shared_ptr<slideio::CVScene> scene = slide->getScene(iScene)->getCVScene();
+        EXPECT_TRUE(scene.get() != nullptr);
+        EXPECT_EQ(iScene, scene->getSceneIndex());
+        EXPECT_EQ(filePath, scene->getFilePath());
+		EXPECT_EQ("GDAL", scene->getDriverId());
+    }
 }

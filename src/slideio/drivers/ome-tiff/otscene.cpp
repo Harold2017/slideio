@@ -11,6 +11,7 @@
 #include "slideio/drivers/ome-tiff/otstructs.hpp"
 #include "slideio/core/tools/tools.hpp"
 #include "slideio/core/tools/cvtools.hpp"
+#include "slideio/core/tools/color_tools.hpp"
 #include "slideio/imagetools/libtiff.hpp"
 #include "slideio/drivers/ome-tiff/tiffdata.hpp"
 #include <tinyxml2.h>
@@ -29,11 +30,13 @@ struct BlockInfo
 };
 
 
-OTScene::OTScene(const ImageData& imageData) {
+OTScene::OTScene(const ImageData& imageData, int sceneIndex, const std::string& driverId) {
     m_imageXml = imageData.imageXml;
     m_imageDoc = imageData.doc;
     m_imageId = imageData.imageId;
     m_filePath = imageData.imageFilePath;
+	m_sceneIndex = sceneIndex;
+    m_driverId = driverId;
     initialize();
 }
 
@@ -198,7 +201,7 @@ void OTScene::initialize() {
     }
     m_bigEndian = pixels->BoolAttribute("BigEndian", false);
     if (m_bigEndian) {
-        RAISE_RUNTIME_ERROR << "OTScene: big endian data is not supported";
+        SLIDEIO_LOG(INFO) << "OTScene: BigEndian pixel order is declared in metadata";
     }
 
 	m_zResolution = pixels->DoubleAttribute("PhysicalSizeZ", 0.0);
@@ -262,7 +265,16 @@ void OTScene::initializeChannelAttributes(tinyxml2::XMLElement* pixels) {
                         }
                         m_channelNames[channelIndex] = attrValue;
                     }
-                    setChannelAttribute(channelIndex, attrName, attrValue);
+                    if (strcmp(attrName, "Color") == 0) {
+                        try {
+                            setChannelAttribute(channelIndex, attrName,
+                                ColorTools::rgbaInt32StringToHexARGB(attrValue));
+                        } catch (const std::exception&) {
+                            setChannelAttribute(channelIndex, attrName, attrValue);
+                        }
+                    } else {
+                        setChannelAttribute(channelIndex, attrName, attrValue);
+                    }
               }
               attribute = attribute->Next();
           }

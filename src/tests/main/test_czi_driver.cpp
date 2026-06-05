@@ -6,13 +6,12 @@
 #include "slideio/drivers/czi/cziimagedriver.hpp"
 #include "slideio/drivers/czi/czislide.hpp"
 #include "tests/testlib/testtools.hpp"
-
-
 #include "slideio/core/tools/tools.hpp"
 #include "slideio/slideio/scene.hpp"
 #include "slideio/core/tools/cvtools.hpp"
 #include "slideio/imagetools/imagetools.hpp"
 #include "slideio/base/exceptions.hpp"
+#include "slideio/slideio/slideio.hpp"
 
 TEST(CZIImageDriver, DriverManager_getDriverIDs)
 {
@@ -673,14 +672,91 @@ TEST(CZIImageDriver, channelAttributes)
     ASSERT_EQ(numScenes, 1);
     auto scene = slide->getScene(0);
     ASSERT_FALSE(scene == nullptr);
-    const int numChannelAttributes = scene->getNumChannelAttributes();
-	ASSERT_EQ(numChannelAttributes, 10);
-	EXPECT_GE(scene->getChannelAttributeIndex("Name"), 0);
-    EXPECT_EQ(scene->getChannelAttributeValue(0, "Name"), "ChS1");
-    EXPECT_EQ(scene->getChannelAttributeValue(1, "Name"), "Ch2");
-    EXPECT_EQ(scene->getChannelAttributeValue(2, "Name"), "NDD T1");
-    EXPECT_EQ(scene->getChannelAttributeValue(0, "EmissionWavelength"), "610.63882650000005");
-    EXPECT_EQ(scene->getChannelAttributeValue(0, "ChannelType"), "Unspecified");
-    EXPECT_EQ(scene->getChannelAttributeValue(1, "PinholeSizeAiry"), "1");
-    EXPECT_EQ(scene->getChannelAttributeValue(0, "AcquisitionMode"), "LaserScanningConfocalMicroscopy");
+    const slideio::Metadata& chanAttrs = scene->getChannelAttributes();
+	ASSERT_EQ(chanAttrs.size(), 3u);                  // numChannels for this scene
+	EXPECT_EQ(chanAttrs[0].size(), 17u);              // channel 0 has the 17 distinct attribute names
+	EXPECT_TRUE(chanAttrs[0].contains("Name"));
+    EXPECT_EQ(chanAttrs[0]["Name"].asString(),                "ChS1");
+    EXPECT_EQ(chanAttrs[1]["Name"].asString(),                "Ch2");
+    EXPECT_EQ(chanAttrs[2]["Name"].asString(),                "NDD T1");
+    EXPECT_EQ(chanAttrs[0]["EmissionWavelength"].asString(),  "610.63882650000005");
+    EXPECT_EQ(chanAttrs[0]["ChannelType"].asString(),         "Unspecified");
+    EXPECT_EQ(chanAttrs[1]["PinholeSizeAiry"].asString(),     "1");
+    EXPECT_EQ(chanAttrs[0]["AcquisitionMode"].asString(),     "LaserScanningConfocalMicroscopy");
+}
+
+/**
+ * 
+ */
+TEST(CZIImageDriver, channelAttributes2)
+{
+    if (!TestTools::isFullTestEnabled())
+    {
+        GTEST_SKIP() << "Skip private test because full dataset is not enabled";
+    }
+    {
+        std::string imagePath = TestTools::getFullTestImagePath("czi", "bug_2D_rgb_compressed.czi");
+        slideio::CZIImageDriver driver;
+        std::shared_ptr<slideio::CVSlide> slide = driver.openFile(imagePath);
+        ASSERT_TRUE(slide != nullptr);
+        std::shared_ptr<slideio::CVScene> scene = slide->getScene(0);
+        const slideio::Metadata& metadata = scene->getChannelAttributes();
+        EXPECT_TRUE(metadata.isArray());
+        EXPECT_EQ(metadata.size(), 3);
+		EXPECT_EQ(metadata[0]["Color"].asString(), "#0000FF");
+        EXPECT_EQ(metadata[1]["Color"].asString(), "#00FF00");
+        EXPECT_EQ(metadata[2]["Color"].asString(), "#FF0000");
+    }
+    {
+        std::string imagePath = TestTools::getFullTestImagePath("czi", "private/20-024_K5_HE.czi");
+        slideio::CZIImageDriver driver;
+        std::shared_ptr<slideio::CVSlide> slide = driver.openFile(imagePath);
+        ASSERT_TRUE(slide != nullptr);
+        std::shared_ptr<slideio::CVScene> scene = slide->getScene(0);
+        const slideio::Metadata& metadata = scene->getChannelAttributes();
+        EXPECT_TRUE(metadata.isArray());
+        EXPECT_EQ(metadata.size(), 3);
+        EXPECT_EQ(metadata[0]["Color"].asString(), "#0000FF");
+        EXPECT_EQ(metadata[1]["Color"].asString(), "#00FF00");
+        EXPECT_EQ(metadata[2]["Color"].asString(), "#FF0000");
+    }
+}
+
+TEST(CZIImageDriver, getDriverId)
+{
+    std::string filePath = TestTools::getTestImagePath("czi", "pJP31mCherry.czi");
+    auto slide = slideio::openSlide(filePath, "AUTO");
+    ASSERT_TRUE(slide);
+    EXPECT_EQ("CZI", slide->getDriverId());
+    const int numScenes = slide->getNumScenes();
+    EXPECT_EQ(1, numScenes);
+    for (int iScene = 0; iScene < numScenes; ++iScene) {
+        std::shared_ptr<slideio::CVScene> scene = slide->getScene(iScene)->getCVScene();
+        EXPECT_TRUE(scene.get() != nullptr);
+        EXPECT_EQ(iScene, scene->getSceneIndex());
+        EXPECT_EQ(filePath, scene->getFilePath());
+		EXPECT_EQ("CZI", scene->getDriverId());
+    }
+}
+
+TEST(CZIImageDriver, openChannelColor)
+{
+    if (!TestTools::isFullTestEnabled())
+    {
+        GTEST_SKIP() << "Skip private test because full dataset is not enabled";
+    }
+    {
+        std::string filePath = TestTools::getFullTestImagePath("czi", u8"openslide/Zeiss-4-Mosaic.czi");
+        slideio::CZIImageDriver driver;
+        std::shared_ptr<slideio::CVSlide> slide = driver.openFile(filePath);
+        int dirCount = slide->getNumScenes();
+        ASSERT_EQ(dirCount, 1);
+        std::shared_ptr<slideio::CVScene> scene = slide->getScene(0);
+        const slideio::Metadata& chanAttrs = scene->getChannelAttributes();
+		ASSERT_EQ(chanAttrs.size(), 3u); // numChannels for this scene
+        EXPECT_TRUE(chanAttrs[0].contains("Color"));
+        EXPECT_EQ(chanAttrs[0]["Color"].asString(), "#FF0000FF");
+        EXPECT_EQ(chanAttrs[1]["Color"].asString(), "#FF00FF00");
+		EXPECT_EQ(chanAttrs[2]["Color"].asString(), "#FFFF0000");
+    }
 }

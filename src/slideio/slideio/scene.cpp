@@ -59,15 +59,15 @@ int Scene::getNumChannels() const
     return m_scene->getNumChannels();
 }
 
-int Scene::getNumZSlices()
+int Scene::getNumZSlices() const
 {
-    SLIDEIO_LOG(INFO) << "Scene::getNumZSlices "; 
+    SLIDEIO_LOG(INFO) << "Scene::getNumZSlices ";
     return m_scene->getNumZSlices();
 }
 
-int Scene::getNumTFrames()
+int Scene::getNumTFrames() const
 {
-    SLIDEIO_LOG(INFO) << "Scene::getNumTFrames "; 
+    SLIDEIO_LOG(INFO) << "Scene::getNumTFrames ";
     return m_scene->getNumTFrames();
 }
 
@@ -300,6 +300,12 @@ MetadataFormat Scene::getMetadataFormat() const {
 	return m_scene->getMetadataFormat();
 }
 
+const slideio::Metadata& slideio::Scene::getMetadata() const
+{
+    SLIDEIO_LOG(INFO) << "Scene::getMetadata ";
+    return m_scene->getMetadata();
+}
+
 std::shared_ptr<Scene> Scene::getAuxImage(const std::string& sceneName) const
 {
     SLIDEIO_LOG(INFO) << "Scene::getAuxImage " << sceneName; 
@@ -320,20 +326,9 @@ std::string Scene::toString() const {
     return m_scene->toString();
 }
 
-int Scene::getNumChannelAttributes() const {
-	return m_scene->getNumChannelAttributes();
+const slideio::Metadata& Scene::getChannelAttributes() const
+{
+    SLIDEIO_LOG(INFO) << "Scene::getChannelAttributes ";
+    return m_scene->getChannelAttributes();
 }
-
-int Scene::getChannelAttributeIndex(const std::string& attributeName) const {
-	return m_scene->getChannelAttributeIndex(attributeName);
-}
-
-std::string Scene::getChannelAttributeName(int attributeIndex) const {
-	return m_scene->getChannelAttributeName(attributeIndex);
-}
-
-std::string Scene::getChannelAttributeValue(int channelIndex, const std::string& attributeName) const {
-	return m_scene->getChannelAttributeValue(channelIndex, attributeName);
-}
-
 

@@ -127,6 +127,26 @@ TEST_F(OTImageDriverTests, openMultifileExternalMetadata) {
 	EXPECT_EQ(scene->getCompression(), sceneInfo.compression);
 }
 
+TEST_F(OTImageDriverTests, getDriverId)
+{
+	if (!TestTools::isFullTestEnabled()) {
+		GTEST_SKIP() << "Skip private test because full dataset is not enabled";
+	}
+
+	std::string filePath = TestTools::getFullTestImagePath("ometiff", "Subresolutions/Leica-2.ome.tiff");
+	auto slide = slideio::openSlide(filePath, "AUTO");
+	ASSERT_TRUE(slide);
+	const int numScenes = slide->getNumScenes();
+	EXPECT_EQ(5, numScenes);
+	for (int iScene=0; iScene<numScenes; ++iScene) {
+		std::shared_ptr<slideio::CVScene> scene = slide->getScene(iScene)->getCVScene();
+		EXPECT_TRUE(scene.get() != nullptr);
+		EXPECT_EQ(iScene, scene->getSceneIndex());
+		EXPECT_EQ(filePath, scene->getFilePath());
+		EXPECT_EQ("OMETIFF", scene->getDriverId());
+	}
+}
+
 TEST_F(OTImageDriverTests, openMultiResolutionSlide) {
 	const SceneInfo scenesInfo[] = {
 		{"macro", {0,0,1616,4668}, 3, 1,1,0.60833,{1.6438445776255536e-5,1.6438445776255536e-5}, DataType::DT_Byte, Compression::Jpeg, 3},
@@ -668,46 +688,127 @@ TEST_F(OTImageDriverTests, sceneWithPixeltype) {
 }
 
 TEST_F(OTImageDriverTests, channelAttributes) {
-	std::string filePath = TestTools::getFullTestImagePath("ometiff", "private/test.ome.tif");
+    std::string filePath = TestTools::getFullTestImagePath("ometiff", "private/test.ome.tif");
     OTImageDriver driver;
-	std::shared_ptr<CVSlide> slide = driver.openFile(filePath);
+    std::shared_ptr<CVSlide> slide = driver.openFile(filePath);
     ASSERT_TRUE(slide != nullptr);
-	auto scene = slide->getScene(0);
-	const int numAtts = scene->getNumChannelAttributes();
-	const int numChannels = scene->getNumChannels();
-	ASSERT_EQ(numAtts, 6);
-	typedef std::tuple<std::string, std::vector<std::string>> AttInfo;
-	std::vector<AttInfo> expectedAttNames = {
-		{"ID", {"Channel:0:0", "Channel:0:1","Channel:0:2","Channel:0:3",
-		    "Channel:0:4","Channel:0:5", "Channel:0:6","Channel:0:7","Channel:0:8",
-		    "Channel:0:9","Channel:0:10","Channel:0:11", "Channel:0:12","Channel:0:13",
-		    "Channel:0:14","Channel:0:15"}},
-		{"SamplesPerPixel", {"1","1","1","1","1",
-		    "1","1","1","1","1",
-		    "1","1","1","1","1"}},
-		{"Name", {"DAPI", "CD8", "CD4", "CD11c", "CD68",
-		    "DAPI2", "CD11b", "PD-1", "CD56", "CD20",
-		    "DAPI3", "CD3", "CD14","CD206", "CK"}},
-		{"Color", {"65535","-10092289", "-3407617", "-872480513", "1711210751",
-		    "65535", "16738047", "16763903", "13369343", "6750207",
-		    "65535", "1694564351", "-872349697", "-16724993", "-16750849"  }},
-		{"ContrastMethod", {"Fluorescence", "Fluorescence", "Fluorescence", "Fluorescence", "Fluorescence",
-		    "Fluorescence", "Fluorescence", "Fluorescence", "Fluorescence", "Fluorescence", 
-		    "Fluorescence", "Fluorescence", "Fluorescence", "Fluorescence", "Fluorescence"}},
-		{"EmissionWavelength", {"440", "371", "392", "413", "434",
-		    "440", "476", "497", "518", "539",
-		    "440", "581","602", "623", "645"}}
+    auto scene = slide->getScene(0);
+    const int numChannels = scene->getNumChannels();
+    const slideio::Metadata& chanAttrs = scene->getChannelAttributes();
+    ASSERT_EQ(static_cast<int>(chanAttrs.size()), numChannels);
+    EXPECT_EQ(chanAttrs[0].size(), 6u);
+
+    typedef std::tuple<std::string, std::vector<std::string>> AttInfo;
+    std::vector<AttInfo> expectedAttNames = {
+        {"ID", {"Channel:0:0", "Channel:0:1","Channel:0:2","Channel:0:3",
+            "Channel:0:4","Channel:0:5", "Channel:0:6","Channel:0:7","Channel:0:8",
+            "Channel:0:9","Channel:0:10","Channel:0:11", "Channel:0:12","Channel:0:13",
+            "Channel:0:14","Channel:0:15"}},
+        {"SamplesPerPixel", {"1","1","1","1","1",
+            "1","1","1","1","1",
+            "1","1","1","1","1"}},
+        {"Name", {"DAPI", "CD8", "CD4", "CD11c", "CD68",
+            "DAPI2", "CD11b", "PD-1", "CD56", "CD20",
+            "DAPI3", "CD3", "CD14","CD206", "CK"}},
+        {"Color", {"#FF0000FF", "#FFFF6600", "#FFFFCC00", "#FFCBFF00", "#FF65FF00",
+            "#FF0000FF", "#FF00FF66", "#FF00FFCB", "#FF00CBFF", "#FF0066FF",
+            "#FF0000FF", "#FF6500FF", "#FFCC00FF", "#FFFF00CB", "#FFFF0066"}},
+        {"ContrastMethod", {"Fluorescence", "Fluorescence", "Fluorescence", "Fluorescence", "Fluorescence",
+            "Fluorescence", "Fluorescence", "Fluorescence", "Fluorescence", "Fluorescence",
+            "Fluorescence", "Fluorescence", "Fluorescence", "Fluorescence", "Fluorescence"}},
+        {"EmissionWavelength", {"440", "371", "392", "413", "434",
+            "440", "476", "497", "518", "539",
+            "440", "581","602", "623", "645"}}
+    };
+
+    for (const AttInfo& info : expectedAttNames) {
+        const std::string& expectedAttName = std::get<0>(info);
+        const std::vector<std::string>& expectedValues = std::get<1>(info);
+        for (int channel = 0; channel < numChannels && channel < static_cast<int>(expectedValues.size()); ++channel) {
+            ASSERT_TRUE(chanAttrs[channel].contains(expectedAttName))
+                << "Channel " << channel << " missing attribute " << expectedAttName;
+            EXPECT_EQ(chanAttrs[channel][expectedAttName].asString(), expectedValues[channel])
+                << "Channel " << channel << " attribute " << expectedAttName;
+        }
+    }
+}
+
+TEST_F(OTImageDriverTests, readBlockBigEndian) {
+	std::string filePath = TestTools::getFullTestImagePath("ometiff", "private/ULT-2020-111-014-1.ome.tif");
+	std::string testFilePaths[] = {	TestTools::getFullTestImagePath("ometiff", "Tests/ULT-2020-111-014_1 (1, x=4375, y=39330, w=1153, h=743).tif"),
+	                                TestTools::getFullTestImagePath("ometiff", "Tests/ULT-2020-111-014_1 (1, x=28333, y=36086, w=1099, h=760).tif")
 	};
-	for (int attIndex = 0; attIndex < numAtts; ++attIndex) {
-		const std::string& expectedAttName = std::get<0>(expectedAttNames[attIndex]);
-		const std::vector<std::string>& expectedValues = std::get<1>(expectedAttNames[attIndex]);
-		std::string attName = scene->getChannelAttributeName(attIndex);
-		const int attIndexScene = scene->getChannelAttributeIndex(attName);
-		ASSERT_GE(attIndexScene, 0);
-		for (int channel = 0; channel < numChannels; ++channel) {
-			const std::string& expectedValue = expectedValues[channel];
-			const std::string& value = scene->getChannelAttributeValue( channel, attIndexScene);
-			EXPECT_EQ(value, expectedValue);
+	OTImageDriver driver;
+	std::shared_ptr<CVSlide> slide = driver.openFile(filePath);
+	ASSERT_TRUE(slide != nullptr);
+	const int numScenes = slide->getNumScenes();
+	ASSERT_EQ(numScenes, 1);
+	std::shared_ptr<CVScene> scene = slide->getScene(0);
+	ASSERT_TRUE(scene != nullptr);
+	cv::Rect sceneRect = scene->getRect();
+	EXPECT_EQ(sceneRect, cv::Rect(0, 0, 53527, 57198));
+	const int numChannels = scene->getNumChannels();
+	EXPECT_EQ(numChannels, 19);
+	const std::string channelNames[] = {
+		"DAPI",
+		"AF488",
+		"AF555",
+		"Cy5",
+		"Cy7",
+		"DAPI2",
+		"CD8",
+		"CD163",
+		"CD3",
+		"FoxP3",
+		"DAPI3",
+		"CK",
+		"CD68",
+		"PD-L1",
+		"CD20",
+        "DAPI4",
+        "BLUE",
+		"GREEN",
+		"RED"
+	};
+	std::string channelName;
+	int channelIndex = 0;
+	for (const std::string& name : channelNames) {
+		auto compression = scene->getCompression();
+		EXPECT_EQ(compression, Compression::LZW);
+		channelName = scene->getChannelName(channelIndex++);
+	}
+
+	cv::Rect rects[] = {
+		 { 4375, 39330, 1153, 743 },
+		 { 28333, 36086, 1099, 760 }
+    };	
+	for (int iPath = 0; iPath < 2; ++iPath) {
+		std::string path = testFilePaths[iPath];
+		cv::Rect rect = rects[iPath];
+		cv::Mat testRaster;
+		ImageTools::openSmallImage(path)->readImageStack(testRaster);
+
+		// Read original scale
+		cv::Mat raster;
+		std::vector<int> channels = { 0 };
+		cv::Mat channelRaster;
+		for (int channelIndex = 0; channelIndex < numChannels; ++channelIndex) {
+			channels[0] = channelIndex;
+			scene->read4DBlockChannels(rect, channels, cv::Range(0, 1), cv::Range(0, 1), raster);
+			cv::extractChannel(testRaster, channelRaster, channelIndex);
+			double sim = ImageTools::computeSimilarity2(channelRaster, raster);
+			EXPECT_GT(sim, 0.99);
+		}
+
+		cv::Size rasterSize = { rect.size().width / 4, rect.size().height / 4 };
+		cv::Mat resizedChannel;
+		for (int channelIndex = 0; channelIndex < numChannels; ++channelIndex) {
+			channels[0] = channelIndex;
+			scene->readResampledBlockChannels(rect, rasterSize, channels, raster);
+			cv::extractChannel(testRaster, channelRaster, channelIndex);
+			cv::resize(channelRaster, resizedChannel, rasterSize);
+			double sim = ImageTools::computeSimilarity2(resizedChannel, raster);
+			EXPECT_GT(sim, 0.9);
 		}
 	}
 }

@@ -20,6 +20,7 @@ namespace slideio
     public:
         SVSSmallScene(
             const std::string& filePath,
+            const std::string& driverId,
             const std::string& name,
             const slideio::TiffDirectory& dir,
             bool auxiliary=true);
@@ -29,7 +30,6 @@ namespace slideio
             const std::vector<int>& channelIndices, int zSliceIndex, int tFrameIndex, cv::OutputArray output) override;
     private:
         slideio::TiffDirectory m_directory;
-        LevelInfo m_levelInfo;
     };
 }
 

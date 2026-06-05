@@ -13,6 +13,7 @@ set(SOURCE_FILES
    ${CMAKE_CURRENT_SOURCE_DIR}/zviutils.hpp
    ${CMAKE_CURRENT_SOURCE_DIR}/zviutils.cpp
    ${CMAKE_CURRENT_SOURCE_DIR}/zvitags.hpp
+   ${CMAKE_CURRENT_SOURCE_DIR}/zvitags.cpp
    ${CMAKE_CURRENT_SOURCE_DIR}/zvipixelformat.hpp
    ${CMAKE_CURRENT_SOURCE_DIR}/zviimageitem.hpp
    ${CMAKE_CURRENT_SOURCE_DIR}/zviimageitem.cpp
@@ -29,13 +30,15 @@ find_package(glog)
 find_package(OpenCV)
 find_package(ZLIB)
 find_package(pole)
+find_package(nlohmann_json REQUIRED)
 
-target_link_libraries(${LIBRARY_NAME} 
+target_link_libraries(${LIBRARY_NAME}
    SQLite::SQLite3
    glog::glog
    opencv::opencv
    ZLIB::ZLIB
    pole::pole
+   nlohmann_json::nlohmann_json
 )
 
 SOURCE_GROUP_BY_FOLDER(SOURCE_FILES)

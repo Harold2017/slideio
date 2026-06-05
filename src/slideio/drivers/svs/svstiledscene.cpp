@@ -15,14 +15,14 @@
 using namespace slideio;
 
 
-SVSTiledScene::SVSTiledScene(const std::string& filePath, const std::string& name, 
-    const std::vector<TiffDirectory>& dirs): SVSScene(filePath, name), m_directories(dirs)
+SVSTiledScene::SVSTiledScene(const std::string& filePath, const std::string& driverId, const std::string& name, 
+    const std::vector<TiffDirectory>& dirs): SVSScene(filePath, driverId,name), m_directories(dirs)
 {
     initialize();
 }
 
-SVSTiledScene::SVSTiledScene(const std::string& filePath, libtiff::TIFF* hFile, const std::string& name,
-    const std::vector<slideio::TiffDirectory>& dirs) : SVSScene(filePath, hFile, name), m_directories(dirs)
+SVSTiledScene::SVSTiledScene(const std::string& filePath, const std::string& driverId, libtiff::TIFF* hFile, const std::string& name,
+    const std::vector<slideio::TiffDirectory>& dirs) : SVSScene(filePath, driverId, hFile, name), m_directories(dirs)
 {
     initialize();
 }
@@ -74,6 +74,8 @@ void SVSTiledScene::initialize()
             level.setTileSize({ directory.tileWidth, directory.tileHeight });
             level.setMagnification(m_magnification * scale);
         }
+        m_rawMetadata = SVSTools::tiffDirectoryToJson(m_directories.front()).dump(2);
+        m_metadataFormat = MetadataFormat::JSON;
     }
 }
 

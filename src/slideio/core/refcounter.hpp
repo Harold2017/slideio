@@ -3,36 +3,37 @@
 // of this distribution and at http://slideio.com/license.html.
 #pragma once
 #include "slideio/core/slideio_core_def.hpp"
+#include <atomic>
 namespace slideio
 {
     class SLIDEIO_CORE_EXPORTS RefCounter
     {
     public:
         void increaseCounter() {
-            if (!m_counter)
+            if (m_counter.fetch_add(1, std::memory_order_acq_rel) == 0)
                 initializeCounter();
-            ++m_counter;
         }
         void decreaseCounter() {
-            --m_counter;
-            if (!m_counter)
+            if (m_counter.fetch_sub(1, std::memory_order_acq_rel) == 1)
                 cleanCounter();
         }
     protected:
         virtual void initializeCounter(){};
         virtual void cleanCounter(){};
     private:
-        int m_counter = 0;
+        std::atomic<int> m_counter{0};
     };
 
     class SLIDEIO_CORE_EXPORTS RefCounterGuard
     {
     public:
         RefCounterGuard(RefCounter* counter) : m_counter(counter) {
-            m_counter->increaseCounter();
+            if (m_counter)
+                m_counter->increaseCounter();
         }
         ~RefCounterGuard() {
-            m_counter->decreaseCounter();
+            if (m_counter)
+                m_counter->decreaseCounter();
         }
         RefCounter* m_counter;
     };

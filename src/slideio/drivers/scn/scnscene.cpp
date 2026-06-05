@@ -13,15 +13,17 @@
 using namespace slideio;
 using namespace tinyxml2;
 
-SCNScene::SCNScene(const std::string& filePath, const tinyxml2::XMLElement* xmlImage):
+SCNScene::SCNScene(const std::string& filePath, int sceneIndex, const std::string& driverId, const tinyxml2::XMLElement* xmlImage):
     m_filePath(filePath),
+	m_driverId(driverId),
     m_compression(Compression::Unknown),
     m_resolution(0., 0.),
     m_magnification(0.),
     m_interleavedChannels(false),
     m_numChannels(1),
     m_numZSlices(1),
-    m_planeCount(1)
+    m_planeCount(1), 
+	m_sceneIndex(sceneIndex)
 {
 	m_metadataFormat = MetadataFormat::XML;
     init(xmlImage);
@@ -140,13 +142,24 @@ void SCNScene::parseChannelNames(const XMLElement* xmlImage)
         for (const auto* xmlChannel = xmlChannelSettings->FirstChildElement("channel");
              xmlChannel != nullptr; xmlChannel = xmlChannel->NextSiblingElement())
         {
-            const char* name = xmlChannel->Attribute("name");
-            if (name)
-            {
-                const int channelIndex = xmlChannel->IntAttribute("index", -1);
-                if (channelIndex >= 0)
+            const int channelIndex = xmlChannel->IntAttribute("index", -1);
+            if (channelIndex >= 0) {
+                for (const auto* xmlAttribute = xmlChannel->FirstAttribute(); xmlAttribute != nullptr; xmlAttribute = xmlAttribute->Next())
                 {
-                    m_channelNames[channelIndex] = name;
+                    const char* attrName = xmlAttribute->Name();
+                    const char* attrValue = xmlAttribute->Value();
+                    if (attrName != nullptr && attrValue != nullptr) {
+                        if (strcmp(attrName, "name") == 0) {
+                            m_channelNames[channelIndex] = attrValue;
+                            setChannelAttribute(channelIndex, "Name", attrValue);
+                        }
+                        else if (strcmp(attrName, "rgb") == 0) {
+                            setChannelAttribute(channelIndex, "Color", attrValue);
+                        }
+                        else {
+                            setChannelAttribute(channelIndex, attrName, attrValue);
+                        }
+                    }
                 }
             }
         }

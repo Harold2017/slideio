@@ -4,6 +4,7 @@
 class TestScene : public slideio::CVScene
 {
 public:
+    using slideio::CVScene::setChannelAttribute;
     TestScene() :
         m_filePath("/path/folder/file.svs"),
         m_rect(0, 0, 100, 100),
@@ -18,6 +19,7 @@ public:
     {}
     std::string getFilePath() const override { return m_filePath; }
     void setFilePath(const std::string& filePath) { m_filePath = filePath; }
+	int getSceneIndex() const override { return 0; }
     std::string getName() const override { return m_name; }
     void setName(const std::string& name) { m_name = name; }
     cv::Rect getRect() const override { return m_rect; }
@@ -42,6 +44,9 @@ public:
 		if (!output.needed()) return;
 		output.create(blockSize, CV_8UC(componentIndices.empty() ? m_numChannels : (int)componentIndices.size()));
 	}
+    const std::string& getDriverId() const override {
+        return m_driverId;
+    }
 private:
     std::string m_filePath;
     cv::Rect m_rect;
@@ -53,4 +58,5 @@ private:
     slideio::Compression m_compression;
     int m_numSlices;
     int m_numTFrames;
+	std::string m_driverId = "TestDriver";
 };

@@ -22,7 +22,7 @@ namespace slideio
     {
         friend class GDALImageDriver;
     protected:
-        GDALSlide(const std::string& filePath);
+        GDALSlide(const std::string& filePath, const std::string& driverId);
     public:
         virtual ~GDALSlide() = default;
         int getNumScenes() const override;
@@ -34,7 +34,6 @@ namespace slideio
         std::vector<std::shared_ptr<CVScene>> m_scenes;
         std::string m_filePath;
 		std::shared_ptr<SmallImage> m_image;
-        std::string m_rawMetadata;
     };
 
 }

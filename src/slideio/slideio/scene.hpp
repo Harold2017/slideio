@@ -5,6 +5,7 @@
 
 #include "slideio/slideio/slideio_def.hpp"
 #include "slideio/base/slideio_enums.hpp"
+#include "slideio/core/metadata.hpp"
 #include <string>
 #include <vector>
 #include <memory>
@@ -48,11 +49,11 @@ namespace slideio
         /**@brief returns number of slices for 3D/4D images. 
         *
         * The method returns 1 for 2D images. */
-        int getNumZSlices();
+        int getNumZSlices() const;
         /**@brief returns number of time frames for 3D/4D images.
         *
         * The method returns 1 for images without time frames. */
-        int getNumTFrames();
+        int getNumTFrames() const;
         /**@brief returns compression of the raster data */
         Compression getCompression() const;
         /**brief returns data type of a channel 
@@ -265,6 +266,8 @@ namespace slideio
         std::string getRawMetadata() const;
 		/**@brief returns metadata format of the scene. */
 		MetadataFormat getMetadataFormat() const;
+        /**@brief returns metadata as a navigable tree. Built lazily on first call. */
+        const Metadata& getMetadata() const;
         /**@brief returns a slideio::Scene object that represents an auxiliary image.
          * @param imageName : name of the auxiliary image.
          */
@@ -273,10 +276,12 @@ namespace slideio
         int getNumZoomLevels() const;
         const LevelInfo* getLevelInfo(int level) const;
         std::string toString() const;
-		virtual int getNumChannelAttributes() const;
-		virtual int getChannelAttributeIndex(const std::string& attributeName) const;
-		virtual std::string getChannelAttributeName(int attributeIndex) const;
-		virtual std::string getChannelAttributeValue(int channelIndex, const std::string& attributeName) const;
+        /**@brief returns channel attributes as a Metadata tree.
+         *
+         * Array of length getNumChannels(); each element is an Object keyed
+         * by attribute name (empty Object if a channel has no attributes).
+         */
+        const Metadata& getChannelAttributes() const;
     private:
         std::shared_ptr<CVScene> m_scene;
     };

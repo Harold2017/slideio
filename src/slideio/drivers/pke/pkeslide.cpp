@@ -2,16 +2,15 @@
 // It is subject to the license terms in the LICENSE file found in the top-level directory
 // of this distribution and at http://slideio.com/license.html.
 #include "slideio/drivers/pke/pkeslide.hpp"
-
-#include <fstream>
-#include <tinyxml2.h>
-
 #include "slideio/imagetools/imagetools.hpp"
 #include "slideio/drivers/pke/pkesmallscene.hpp"
 #include "slideio/drivers/pke/pketiledscene.hpp"
 #include "slideio/imagetools/tifftools.hpp"
 #include "slideio/base/base.hpp"
 #include "slideio/base/log.hpp"
+#include <fstream>
+#include <tinyxml2.h>
+#include <filesystem>
 
 
 
@@ -48,7 +47,7 @@ std::shared_ptr<CVScene> PKESlide::getScene(int index) const
     return m_Scenes[index];
 }
 
-std::shared_ptr<PKESlide> PKESlide::openFile(const std::string& filePath)
+std::shared_ptr<PKESlide> PKESlide::openFile(const std::string& filePath, const std::string& driverId)
 {
     SLIDEIO_LOG(INFO) << "PKESlide::openFile: " << filePath;
     std::shared_ptr<PKESlide> slide;
@@ -67,6 +66,8 @@ std::shared_ptr<PKESlide> PKESlide::openFile(const std::string& filePath)
     std::map<std::string, std::shared_ptr<CVScene>> auxImages;
     std::list<std::string> auxNames;
     std::list<std::string> metadataItems;
+    slide.reset(new PKESlide);
+	slide->setDriverId(driverId);
 
     for (const auto& directory : directories) {
         const auto& description = directory.description;
@@ -90,7 +91,7 @@ std::shared_ptr<PKESlide> PKESlide::openFile(const std::string& filePath)
                     }
                     image_dirs.push_back(directory);
                 } else if(type == "Thumbnail" || type == "Overview" || type == "Label") {
-                    std::shared_ptr<CVScene> scene(new PKESmallScene(filePath, type, directory, true));
+                    std::shared_ptr<CVScene> scene(new PKESmallScene(filePath, -1, slide->getDriverId(),type, directory, true));
                     auxImages[type] = scene;
                     auxNames.emplace_back(type);
                 }
@@ -98,10 +99,9 @@ std::shared_ptr<PKESlide> PKESlide::openFile(const std::string& filePath)
         }
     }
 
-    std::shared_ptr<CVScene> scene(new PKETiledScene(filePath,keeper.release(),"Image", image_dirs));
     std::vector<std::shared_ptr<CVScene>> scenes;
+    std::shared_ptr<CVScene> scene(new PKETiledScene(filePath,static_cast<int>(scenes.size()), slide->getDriverId(), keeper.release(),"Image", image_dirs));
     scenes.push_back(scene);
-    slide.reset(new PKESlide);
     slide->m_Scenes.assign(scenes.begin(), scenes.end());
     slide->m_filePath = filePath;
     slide->m_auxImages = auxImages;
@@ -120,9 +120,13 @@ std::shared_ptr<PKESlide> PKESlide::openFile(const std::string& filePath)
     tinyxml2::XMLPrinter printer;
     xmlMetadata.Print(&printer);
     slide->m_rawMetadata = printer.CStr();
-    //std::ofstream outFile("D:/Temp/output.xml");
-    //outFile << slide->m_rawMetadata;
-    //outFile.close();
+#if defined(_DEBUG)
+    // std::string fileName = std::filesystem::path(filePath).stem().string();
+    // std::string xmlPath = "D:/Temp/" + fileName + ".xml";
+    // std::ofstream outFile(xmlPath);
+    // outFile << slide->m_rawMetadata;
+    // outFile.close();
+#endif
     return slide;
 }
 

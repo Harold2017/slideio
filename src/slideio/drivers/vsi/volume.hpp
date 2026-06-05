@@ -2,6 +2,7 @@
 // It is subject to the license terms in the LICENSE file found in the top-level directory
 // of this distribution and at http://slideio.com/license.html.
 #pragma once
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -67,6 +68,19 @@ namespace slideio
             double getTResolution() const { return m_tResolution; }
             void setChannelName(int channelIndex, const std::string& channelName);
             std::string getChannelName(int channelIndex) const;
+
+            // Channel display color extracted from VSI metadata (tag STACK_DISPLAY_LUT
+            // gradient endpoint or DISPLAY_COLOR). Stored as 0x00RRGGBB. Sentinel
+            // 0xFFFFFFFF means "no color stored for this channel".
+            void setChannelColor(int channelIndex, uint8_t r, uint8_t g, uint8_t b);
+            bool hasChannelColor(int channelIndex) const;
+            void getChannelColor(int channelIndex, uint8_t& r, uint8_t& g, uint8_t& b) const;
+
+            // Per-channel emission wavelength in nanometres (tag CHANNEL_WAVELENGTH).
+            // 0.0 means "not set".
+            void setChannelEmissionWavelength(int channelIndex, double nm);
+            double getChannelEmissionWavelength(int channelIndex) const;
+
 			const bool isValid() const {
 				return m_size.height>0 && m_size.width>0;
 			}
@@ -90,6 +104,9 @@ namespace slideio
             double m_zResolution = 0.;
             double m_tResolution = 0.;
             std::vector<std::string> m_channelNames;
+            static constexpr uint32_t kNoChannelColor = 0xFFFFFFFFu;
+            std::vector<uint32_t> m_channelColors;
+            std::vector<double> m_channelEmissionWavelengths;
         };
 
     };

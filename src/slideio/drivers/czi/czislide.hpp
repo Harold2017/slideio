@@ -28,7 +28,7 @@ namespace slideio
     {
         friend class CZIImageDriver;
     protected:
-        CZISlide(const std::string& filePath);
+        CZISlide(const std::string& filePath, const std::string& driverId);
     public:
         virtual ~CZISlide() override;
         int getNumScenes() const override;
@@ -44,7 +44,7 @@ namespace slideio
         std::shared_ptr<CVScene> getAuxImage(const std::string& sceneName) const override;
         void readFileHeader(FileHeader& fileHeader);
         void readSubBlocks(uint64_t pos, uint64_t originPos, std::vector<CZISubBlocks>& sceneBlocks, std::vector<uint64_t>& sceneIds);
-        std::shared_ptr<CZIScene> constructScene(uint64_t sceneId, const CZISubBlocks& blocks, bool mainScene = true);
+        std::shared_ptr<CZIScene> constructScene(int sceneIndex, uint64_t sceneId, const CZISubBlocks& blocks, bool mainScene = true);
     private:
         void readAttachments();
         void init();
@@ -56,6 +56,7 @@ namespace slideio
         void parseResolutions(tinyxml2::XMLNode* root);
         void parseSizes(tinyxml2::XMLNode* root);
         void createJpgAttachmentScenes(int64_t dataPosition, int64_t dataSize, const std::string& name);
+        void processBgrChannelAttributes();
         void parseChannels(tinyxml2::XMLNode* root);
         void createCZIAttachmentScenes(const int64_t dataPos, int64_t dataSize, const std::string& attachmentName);
         void addAuxiliaryImage(const std::string& name, const std::string& type, int64_t position);

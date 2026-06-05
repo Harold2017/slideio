@@ -3,6 +3,7 @@
 #include "slideio/drivers/afi/afislide.hpp"
 #include "slideio/imagetools/imagetools.hpp"
 #include "slideio/base/exceptions.hpp"
+#include "slideio/slideio/slideio.hpp"
 
 #include <gtest/gtest.h>
 #include <filesystem>
@@ -68,7 +69,7 @@ TEST_F(AFIDriverFileTest, openFile)
     auto slide = driver.openFile(filePath);
     EXPECT_TRUE(slide!=nullptr);
     EXPECT_EQ(slide->getMetadataFormat(), slideio::MetadataFormat::None);
-	EXPECT_EQ(slide->getScene(0)->getMetadataFormat(), slideio::MetadataFormat::None);
+	EXPECT_EQ(slide->getScene(0)->getMetadataFormat(), slideio::MetadataFormat::JSON);
 }
 
 TEST_F(AFIDriverFileTest, getScenesFromFiles)
@@ -87,6 +88,23 @@ TEST_F(AFIDriverFileTest, getScenesFromNonExistentFiles)
     EXPECT_THROW(slideio::AFISlide::getSlidesScenesFromFiles(svsFiles, afiFile), slideio::RuntimeError);
 }
 
+TEST_F(AFIDriverFileTest, getSceneIndex)
+{
+    const std::string filePath = getPrivTestImagesPath("afi", "fs.afi");
+    slideio::AFIImageDriver driver;
+    std::shared_ptr<slideio::CVSlide> slide = driver.openFile(filePath);
+    ASSERT_TRUE(slide);
+    const int numScenes = slide->getNumScenes();
+    EXPECT_EQ(3, numScenes);
+    for (int iScene = 0; iScene < numScenes; ++iScene) {
+        std::shared_ptr<slideio::CVScene> scene = slide->getScene(iScene);
+        EXPECT_TRUE(scene.get() != nullptr);
+        EXPECT_EQ(iScene, scene->getSceneIndex());
+        EXPECT_EQ(filePath, scene->getFilePath());
+		EXPECT_EQ("AFI", scene->getDriverId());
+    }
+}
+
 TEST_F(AFIDriverFileTest, checkFile)
 {
     slideio::AFIImageDriver driver;
@@ -99,7 +117,7 @@ TEST_F(AFIDriverFileTest, checkFile)
     EXPECT_EQ(scene->getName(), "Image");
     std::string scenePath = std::filesystem::path(scene->getFilePath()).lexically_normal().string();
     std::string svsPath = getPrivTestImagesPath("afi", "fs_Alexa Fluor 488.svs");
-    EXPECT_EQ(scenePath, svsPath);
+    EXPECT_EQ(scenePath, filePath);
 }
 
 TEST_F(AFIDriverFileTest, read_ImageBlock)
@@ -157,4 +175,25 @@ TEST_F(AFIDriverFileTest, multiThreadSceneAccess) {
     std::string filePath = getPrivTestImagesPath("afi", "fs.afi");
     slideio::AFIImageDriver driver;
     TestTools::multiThreadedTest(filePath, driver);
+}
+
+TEST_F(AFIDriverFileTest, getDriverId)
+{
+    if (!TestTools::isFullTestEnabled()) {
+        GTEST_SKIP() << "Skip private test because full dataset is not enabled";
+    }
+
+    const std::string filePath = getPrivTestImagesPath("afi", "fs.afi");
+    auto slide = slideio::openSlide(filePath, "AUTO");
+    ASSERT_TRUE(slide);
+    EXPECT_EQ("AFI", slide->getDriverId());
+    const int numScenes = slide->getNumScenes();
+    EXPECT_EQ(3, numScenes);
+    for (int iScene = 0; iScene < numScenes; ++iScene) {
+        std::shared_ptr<slideio::CVScene> scene = slide->getScene(iScene)->getCVScene();
+        EXPECT_TRUE(scene.get() != nullptr);
+        EXPECT_EQ(iScene, scene->getSceneIndex());
+        EXPECT_EQ(filePath, scene->getFilePath());
+        EXPECT_EQ("AFI", scene->getDriverId());
+    }
 }

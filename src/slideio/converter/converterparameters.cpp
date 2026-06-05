@@ -47,6 +47,7 @@ void ConverterParameters::copyFrom(const ConverterParameters& other) {
     m_channelRange = other.m_channelRange;
     m_sliceRange = other.m_sliceRange;
     m_frameRange = other.m_frameRange;
+	m_tileBatchSize = other.m_tileBatchSize;
 
     // Deep copy encode parameters
     if (other.m_encodeParameters) {
@@ -79,6 +80,8 @@ void ConverterParameters::copyFrom(const ConverterParameters& other) {
             newParams->setTileWidth(tiffParams->getTileWidth());
             newParams->setTileHeight(tiffParams->getTileHeight());
             newParams->setNumZoomLevels(tiffParams->getNumZoomLevels());
+            newParams->setNumReadingThreads(tiffParams->getNumReadingThreads());
+            newParams->setNumEncodingThreads(tiffParams->getNumEncodingThreads());
             m_containerParameters = newParams;
         } else {
             m_containerParameters = nullptr;
@@ -128,6 +131,7 @@ void ConverterParameters::initialize() {
     m_channelRange = Range(0, 0);
     m_sliceRange = Range(0, 0);
     m_frameRange = Range(0, 0);
+    m_tileBatchSize = 10;
 }
 
 Compression ConverterParameters::getEncoding() const {

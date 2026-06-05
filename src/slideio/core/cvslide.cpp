@@ -2,6 +2,7 @@
 // It is subject to the license terms in the LICENSE file found in the top-level directory
 // of this distribution and at http://slideio.com/license.html.
 #include "slideio/core/cvslide.hpp"
+#include "slideio/core/metadata_internal.hpp"
 
 using namespace slideio;
 
@@ -44,6 +45,20 @@ MetadataFormat CVSlide::recognizeMetadataFormat(const std::string& metadata) {
     }
 
     return MetadataFormat::Text;
+}
+
+MetadataBuilder CVSlide::buildMetadataTree() const
+{
+    return detail::makeDefaultMetadataBuilder(m_rawMetadata, m_metadataFormat);
+}
+
+const Metadata& CVSlide::getMetadata() const
+{
+    std::call_once(m_metadataOnce, [this]
+    {
+        m_metadata = buildMetadataTree().freeze();
+    });
+    return m_metadata;
 }
 
 std::string CVSlide::toString() const {

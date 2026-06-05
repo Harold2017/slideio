@@ -7,12 +7,14 @@
 #include <numeric>
 #include <mutex>
 #include "slideio/base/exceptions.hpp"
+#include "slideio/core/metadata_internal.hpp"
 #include "cvscene.hpp"
 
 
 using namespace slideio;
 
-std::string CVScene::getChannelName(int) const
+
+std::string CVScene::getChannelName(int /*channel*/) const
 {
     return "";
 }
@@ -27,7 +29,6 @@ void CVScene::readBlock(const cv::Rect& blockRect, cv::OutputArray output)
 void CVScene::readBlockChannels(const cv::Rect& blockRect, const std::vector<int>& channelIndices, cv::OutputArray output)
 {
     RefCounterGuard guard(this);
-    const cv::Rect rectScene = blockRect;
     readResampledBlockChannels(blockRect, blockRect.size(), channelIndices, output);
 }
 
@@ -58,7 +59,6 @@ void CVScene::read4DBlockChannels(const cv::Rect& blockRect, const std::vector<i
     const cv::Range& zSliceRange, const cv::Range& timeFrameRange, cv::OutputArray output)
 {
     RefCounterGuard guard(this);
-    const cv::Rect rectScene = blockRect;
     readResampled4DBlockChannels(blockRect, blockRect.size(), channelIndices, zSliceRange, timeFrameRange, output);
 }
 
@@ -229,87 +229,75 @@ std::string CVScene::toString() const {
     return os.str();
 }
 
-int slideio::CVScene::defineChannelAttribute(const std::string &attributeName)
-{
-    int attributeIndex = getChannelAttributeIndex(attributeName);
-    if (attributeIndex == -1) {
-        m_channelAttributeNames.push_back(attributeName);
-        attributeIndex = static_cast<int>(m_channelAttributeNames.size() - 1);
-        if(m_channelAttributes.size() <= getNumChannels()) {
-            m_channelAttributes.resize(getNumChannels());
-        }
-        for(auto& channelAttributes : m_channelAttributes) {
-            if(channelAttributes.size() <= attributeIndex) {
-                channelAttributes.resize(attributeIndex + 1);
-            }
-        }
-    }
-    return attributeIndex;
-}
-
-int slideio::CVScene::getChannelAttributeIndex(const std::string &attributeName) const
-{
-    int attributeIndex = -1;
-    const auto it = std::find(m_channelAttributeNames.begin(), m_channelAttributeNames.end(), attributeName);
-    if (it != m_channelAttributeNames.end()) {
-        attributeIndex = static_cast<int>(std::distance(m_channelAttributeNames.begin(), it));
-    }
-    return attributeIndex;
-}
-
 void slideio::CVScene::setChannelAttribute(int channelIndex, const std::string &attributeName, const std::string &attributeValue)
 {
     if(channelIndex < 0 || channelIndex >= getNumChannels()) {
         RAISE_RUNTIME_ERROR << "Invalid channel index: " << channelIndex
             << " Expected range: [0," << getNumChannels() << ")";
     }
-    if(m_channelAttributes.size() <= getNumChannels()) {
-        m_channelAttributes.resize(getNumChannels());
-    }
-    const int attributeIndex = defineChannelAttribute(attributeName);
-    auto& channelAttributes = m_channelAttributes[channelIndex];
-    if(channelAttributes.size() <= attributeIndex) {
-        RAISE_RUNTIME_ERROR << "Invalid attribute index: " << attributeIndex
-            << " Expected range: [0," << channelAttributes.size() << ")";
-    }
-    channelAttributes[attributeIndex] = attributeValue;
+    m_channelAttrs[static_cast<size_t>(channelIndex)][attributeName].set(attributeValue);
 }
 
-std::string slideio::CVScene::getChannelAttributeValue(int channelIndex, const std::string &attributeName) const
+void slideio::CVScene::setChannelAttribute(int channelIndex, const std::string &attributeName, const char* attributeValue)
 {
     if(channelIndex < 0 || channelIndex >= getNumChannels()) {
-        RAISE_RUNTIME_ERROR << "Invalid channel index or not initialized attribute collection: " << channelIndex
+        RAISE_RUNTIME_ERROR << "Invalid channel index: " << channelIndex
             << " Expected range: [0," << getNumChannels() << ")";
     }
-    const int attributeIndex = getChannelAttributeIndex(attributeName);
-    if(attributeIndex == -1) {
-        RAISE_RUNTIME_ERROR << "Attribute not found: " << attributeName;
-    }
-    const auto& channelAttributes = m_channelAttributes[channelIndex];
-    if(channelAttributes.size() <= attributeIndex) {
-        RAISE_RUNTIME_ERROR << "Invalid attribute index: " << attributeIndex
-            << " Expected range: [0," << channelAttributes.size() << ")";
-    }
-    return channelAttributes[attributeIndex];
+    m_channelAttrs[static_cast<size_t>(channelIndex)][attributeName].set(attributeValue);
 }
 
-const std::string& CVScene::getChannelAttributeValue(int channelIndex, int attributeIndex) const {
+void slideio::CVScene::setChannelAttribute(int channelIndex, const std::string &attributeName, bool attributeValue)
+{
     if(channelIndex < 0 || channelIndex >= getNumChannels()) {
-        RAISE_RUNTIME_ERROR << "Invalid channel index or not initialized attribute collection: " << channelIndex
+        RAISE_RUNTIME_ERROR << "Invalid channel index: " << channelIndex
             << " Expected range: [0," << getNumChannels() << ")";
     }
-    const auto& channelAttributes = m_channelAttributes[channelIndex];
-    if(attributeIndex < 0 || attributeIndex >= channelAttributes.size()) {
-        RAISE_RUNTIME_ERROR << "Invalid attribute index: " << attributeIndex
-            << " Expected range: [0," << channelAttributes.size() << ")";
-    }
-	return channelAttributes[attributeIndex];
+    m_channelAttrs[static_cast<size_t>(channelIndex)][attributeName].set(attributeValue);
 }
 
-const std::string& CVScene::getChannelAttributeName(int index) const {
-    if(index < 0 || index >= m_channelAttributeNames.size()) {
-        RAISE_RUNTIME_ERROR << "Invalid channel attribute index: " << index
-            << " Expected range: [0," << m_channelAttributeNames.size() << ")";
+void slideio::CVScene::setChannelAttribute(int channelIndex, const std::string &attributeName, int64_t attributeValue)
+{
+    if(channelIndex < 0 || channelIndex >= getNumChannels()) {
+        RAISE_RUNTIME_ERROR << "Invalid channel index: " << channelIndex
+            << " Expected range: [0," << getNumChannels() << ")";
     }
-	return m_channelAttributeNames[index];
+    m_channelAttrs[static_cast<size_t>(channelIndex)][attributeName].set(attributeValue);
+}
+
+void slideio::CVScene::setChannelAttribute(int channelIndex, const std::string &attributeName, double attributeValue)
+{
+    if(channelIndex < 0 || channelIndex >= getNumChannels()) {
+        RAISE_RUNTIME_ERROR << "Invalid channel index: " << channelIndex
+            << " Expected range: [0," << getNumChannels() << ")";
+    }
+    m_channelAttrs[static_cast<size_t>(channelIndex)][attributeName].set(attributeValue);
+}
+
+MetadataBuilder CVScene::buildMetadataTree() const
+{
+    return detail::makeDefaultMetadataBuilder(m_rawMetadata, m_metadataFormat);
+}
+
+const Metadata& CVScene::getMetadata() const
+{
+    std::call_once(m_metadataOnce, [this]
+    {
+        m_metadata = buildMetadataTree().freeze();
+    });
+    return m_metadata;
+}
+
+const Metadata& CVScene::getChannelAttributes() const
+{
+    std::call_once(m_channelAttrsOnce, [this]
+    {
+        const int numChannels = getNumChannels();
+        MetadataBuilder padded = m_channelAttrs;             // deep top-level copy
+        for (int i = 0; i < numChannels; ++i) {
+            padded[static_cast<size_t>(i)].makeObject();      // ensure slot exists
+        }
+        m_channelAttributesMeta = padded.freeze();
+    });
+    return m_channelAttributesMeta;
 }

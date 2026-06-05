@@ -5,9 +5,11 @@
 #include "slideio/core/tools/tools.hpp"
 #include "slideio/drivers/afi/afislide.hpp"
 #include "slideio/drivers/svs/svsslide.hpp"
+#include "slideio/drivers/svs/svsscene.hpp"
 #include <filesystem>
 #include <tinyxml2.h>
 #include <fstream>
+
 
 
 using namespace slideio;
@@ -75,7 +77,7 @@ std::shared_ptr<CVScene> AFISlide::getScene(int index) const
     return m_scenes[index];
 }
 
-std::shared_ptr<AFISlide> AFISlide::openFile(const std::string& filePath)
+std::shared_ptr<AFISlide> AFISlide::openFile(const std::string& filePath, const std::string& driverId)
 {
     Tools::throwIfPathNotExist(filePath, "AFISlide::openFile");
 #if defined(WIN32)
@@ -95,8 +97,16 @@ std::shared_ptr<AFISlide> AFISlide::openFile(const std::string& filePath)
         RAISE_RUNTIME_ERROR << "File " << filePath << " contains no images to open";
     }   
     std::shared_ptr<AFISlide> afiSlide(new AFISlide);
+    afiSlide->setDriverId(driverId);
     afiSlide->m_scenes.assign(slidesScenes.second.begin(), slidesScenes.second.end());
     afiSlide->m_slides.assign(slidesScenes.first.begin(), slidesScenes.first.end());
+    int iScene = 0;
+    for (auto& scene : afiSlide->m_scenes) {
+        std::shared_ptr<SVSScene> svsScene = std::static_pointer_cast<SVSScene>(scene);
+		svsScene->setFilePath(filePath);
+		svsScene->setSceneIndex(iScene++);
+        svsScene->setDriverId(afiSlide->getDriverId());
+    }
     afiSlide->m_filePath = filePath;
 
     return afiSlide;
@@ -123,7 +133,7 @@ slideio::AFISlide::SlidesScenes slideio::AFISlide::getSlidesScenesFromFiles(cons
     SlidesScenes result;
     for (const auto svsFile : files) {
         const auto svsPath = getFileRelativeTo(mainFile, svsFile);
-        const auto svsSlide = SVSSlide::openFile(svsPath);
+        const auto svsSlide = SVSSlide::openFile(svsPath, "AFI");
         if(svsSlide == nullptr) {
             RAISE_RUNTIME_ERROR << "Couldn't open SVS file " << svsPath;
         }

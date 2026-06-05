@@ -55,7 +55,7 @@ std::vector<std::string> ImageDriverManager::getDriverIDs()
 std::shared_ptr<slideio::ImageDriver> ImageDriverManager::findDriver(const std::string& filePath)
 {
     initialize();
-    std::string driverOrder[] = { "OMETIFF", "SVS", "CZI", "AFI", "SCN", "DCM", "ZVI", "NDPI", "VSI", "PKE", "GDAL" };
+    std::string driverOrder[] = { "OMETIFF", "SVS", "CZI", "AFI", "SCN", "DCM", "ZVI", "NDPI", "VSI", "QPTIFF", "GDAL" };
     for (const auto& driverID : driverOrder) {
         auto itDriver = driverMap.find(driverID);
         if (itDriver != driverMap.end()) {
@@ -80,12 +80,11 @@ void ImageDriverManager::initialize()
             driverMap[driver->getID()] = driver;
         }
         {
-            SVSImageDriver* driver = new SVSImageDriver;
-            std::shared_ptr<ImageDriver> svs(driver);
-            driverMap[svs->getID()] = svs;
+            auto driver = std::make_shared<SVSImageDriver>();
+            driverMap[driver->getID()] = driver;
         }
         {
-            std::shared_ptr<ImageDriver> driver(new CZIImageDriver);
+            auto driver = std::make_shared<CZIImageDriver>();
             driverMap[driver->getID()] = driver;
         }
         {
@@ -117,9 +116,8 @@ void ImageDriverManager::initialize()
             driverMap[driver->getID()] = driver;
         }
         {
-            GDALImageDriver* driver = new GDALImageDriver;
-            std::shared_ptr<ImageDriver> gdal(driver);
-            driverMap[gdal->getID()] = gdal;
+            auto driver = std::make_shared<GDALImageDriver>();
+            driverMap[driver->getID()] = driver;
         }
     }
 }
@@ -141,7 +139,9 @@ std::shared_ptr<CVSlide> ImageDriverManager::openSlide(const std::string& filePa
             throw std::runtime_error("ImageDriverManager: Unknown driver " + driverName);
         driver = it->second;
     }
-    return driver->openFile(filePath);
+	auto slide = driver->openFile(filePath);
+	slide->setDriverId(driver->getID());
+    return slide;
 }
 
 void ImageDriverManager::setLogLevel(const std::string &level) {

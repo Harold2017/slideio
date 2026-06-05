@@ -14,6 +14,8 @@
 #include "slideio/core/tools/cvtools.hpp"
 #include "slideio/drivers/zvi/zviimagedriver.hpp"
 #include "slideio/imagetools/imagetools.hpp"
+#include "slideio/slideio/slideio.hpp"
+#include "slideio/core/metadata.hpp"
 
 using namespace slideio;
 
@@ -44,7 +46,26 @@ TEST(ZVIImageDriver, openSlide2D)
     std::string filePath = TestTools::getTestImagePath("zvi", "Zeiss-1-Merged.zvi");
     std::shared_ptr<slideio::CVSlide> slide = driver.openFile(filePath);
     ASSERT_TRUE(slide.get() != nullptr);
-	EXPECT_EQ(slide->getMetadataFormat(), slideio::MetadataFormat::None);
+    EXPECT_EQ(slide->getMetadataFormat(), slideio::MetadataFormat::JSON);
+    EXPECT_FALSE(slide->getRawMetadata().empty());
+    const slideio::Metadata& meta = slide->getMetadata();
+
+    // File-level tags remain at the root.
+    EXPECT_EQ(meta["Image Width (Pixel)"].asInt(),  1480);
+    EXPECT_EQ(meta["Image Height (Pixel)"].asInt(), 1132);
+
+    // Per-item tags appear under Channels[].
+    const slideio::Metadata& channels = meta["Channels"];
+    ASSERT_TRUE(channels.isArray());
+    ASSERT_EQ(channels.size(), 3u);
+
+    EXPECT_EQ(channels[0]["Channel Name"].asString(), std::string("Hoechst 33342"));
+    EXPECT_EQ(channels[1]["Channel Name"].asString(), std::string("Cy3"));
+    EXPECT_EQ(channels[2]["Channel Name"].asString(), std::string("FITC"));
+
+    // 2D image: no ZSlices nesting.
+    EXPECT_FALSE(channels[0].contains("ZSlices"));
+
     const int sceneCount = slide->getNumScenes();
     ASSERT_EQ(sceneCount, 1);
     auto scene = slide->getScene(0);
@@ -101,6 +122,24 @@ TEST(ZVIImageDriver, openSlide3D)
     EXPECT_DOUBLE_EQ(res.y, 0.0645e-6);
     auto zres = scene->getZSliceResolution();
     EXPECT_DOUBLE_EQ(zres, 0.25e-6);
+
+    EXPECT_EQ(slide->getMetadataFormat(), slideio::MetadataFormat::JSON);
+    const slideio::Metadata& meta = slide->getMetadata();
+    const slideio::Metadata& channels = meta["Channels"];
+    ASSERT_TRUE(channels.isArray());
+    // Zeiss-1-Stacked.zvi has one channel and multiple z-slices.
+    ASSERT_GE(channels.size(), 1u);
+
+    const slideio::Metadata& ch0 = channels[0];
+    ASSERT_TRUE(ch0.contains("ZSlices"));
+    const slideio::Metadata& zSlices = ch0["ZSlices"];
+    ASSERT_TRUE(zSlices.isArray());
+    EXPECT_GT(zSlices.size(), 1u);
+
+    // Channel Name (if present) is hoisted to the channel object, not duplicated per ZSlice.
+    if (ch0.contains("Channel Name")) {
+        EXPECT_FALSE(zSlices[0].contains("Channel Name"));
+    }
 }
 
 TEST(ZVIImageDriver, openSlideMosaic)
@@ -522,4 +561,34 @@ TEST(ZVIImageDriver, multiThreadSceneAccess) {
     std::string filePath = TestTools::getFullTestImagePath("zvi", "mouse/20140505_mouse_2cell_H2AUb_RING1B_DAPI_T_005.zvi");
     slideio::ZVIImageDriver driver;
     TestTools::multiThreadedTest(filePath, driver);
+}
+
+TEST(ZVIImageDriver, getSceneIndex)
+{
+    if (!TestTools::isFullTestEnabled()) {
+        GTEST_SKIP() <<
+            "Skip the test because full dataset is not enabled";
+    }
+    const std::string filePath = TestTools::getTestImagePath("zvi", "Zeiss-1-Stacked.zvi");
+    auto slide = slideio::openSlide(filePath, "AUTO");
+    ASSERT_TRUE(slide);
+    EXPECT_EQ("ZVI", slide->getDriverId());
+    const int numScenes = slide->getNumScenes();
+    EXPECT_EQ(1, numScenes);
+    for (int iScene = 0; iScene < numScenes; ++iScene) {
+        std::shared_ptr<slideio::CVScene> scene = slide->getScene(iScene)->getCVScene();
+        EXPECT_TRUE(scene.get() != nullptr);
+        EXPECT_EQ(iScene, scene->getSceneIndex());
+        EXPECT_EQ(filePath, scene->getFilePath());
+		EXPECT_EQ("ZVI", scene->getDriverId());
+    }
+    const int numImages = slide->getNumAuxImages();
+    ASSERT_EQ(numImages, 0);
+    std::list<std::string> imageNames = slide->getAuxImageNames();
+    for (auto& name : imageNames) {
+        auto scene = slide->getAuxImage("label")->getCVScene();
+        EXPECT_TRUE(scene.get() != nullptr);
+        EXPECT_EQ(-1, scene->getSceneIndex());
+        EXPECT_EQ(filePath, scene->getFilePath());
+    }
 }

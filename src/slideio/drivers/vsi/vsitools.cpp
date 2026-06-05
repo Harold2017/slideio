@@ -6,6 +6,8 @@
 #include "vsitags.hpp"
 #include "taginfo.hpp"
 
+#include <algorithm>
+
 using namespace slideio;
 
 DataType vsi::VSITools::toSlideioPixelType(uint32_t vsiPixelType) {
@@ -840,22 +842,35 @@ std::string vsi::VSITools::extractTagValue(vsi::VSIStream& vsi, const vsi::TagIn
         }
     }
                                           break;
-    case vsi::ValueType::RGB: {
-        int red = vsi.readValue<uint8_t>();
-        int green = vsi.readValue<uint8_t>();
-        int blue = vsi.readValue<uint8_t>();
-        value = "red = " + std::to_string(red)
-            + ", green = " + std::to_string(green)
-            + ", blue = " + std::to_string(blue);
-    }
-                            break;
+    case vsi::ValueType::RGB:
     case vsi::ValueType::BGR: {
-        int blue = vsi.readValue<uint8_t>();
-        int green = vsi.readValue<uint8_t>();
-        int red = vsi.readValue<uint8_t>();
+        // Tag 269 (RGB) / 270 (BGR) can carry either a single triple
+        // (e.g. DISPLAY_COLOR, CANVAS_COLOR_*) or a flat array of triples
+        // (imgDisplayLUT — a gradient/colour-table with N entries).
+        // Read all entries so the stream stays aligned, and surface the
+        // LAST entry as the value string. For gradient LUTs this is the
+        // channel's tint colour at full intensity; for a single triple it
+        // is unchanged from the previous behaviour.
+        const int entries = std::max(1, tagInfo.dataSize / 3);
+        const bool bgr = tagInfo.valueType == vsi::ValueType::BGR;
+        int red = 0, green = 0, blue = 0;
+        for (int i = 0; i < entries; ++i) {
+            if (bgr) {
+                blue = vsi.readValue<uint8_t>();
+                green = vsi.readValue<uint8_t>();
+                red = vsi.readValue<uint8_t>();
+            } else {
+                red = vsi.readValue<uint8_t>();
+                green = vsi.readValue<uint8_t>();
+                blue = vsi.readValue<uint8_t>();
+            }
+        }
         value = "red = " + std::to_string(red)
             + ", green = " + std::to_string(green)
             + ", blue = " + std::to_string(blue);
+        if (entries > 1) {
+            value += " [" + std::to_string(entries) + " entries]";
+        }
     }
                             break;
     }

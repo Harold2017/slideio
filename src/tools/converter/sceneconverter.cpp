@@ -180,6 +180,11 @@ void printInfo(const TiffConverter& converter) {
 	std::cout << "Slice range: " << params.getSliceRange() << std::endl;
 	std::cout << "Time frame range: " << params.getTFrameRange() << std::endl;
 	std::cout << "Target image rectangle: " << params.getRect() << std::endl;
+	std::cout << "Number of tiles in a batch: " << params.getTileBatchSize() << std::endl;
+	const int numReadingThreads = tiffParams->getNumReadingThreads();
+	const int numEncodingThreads = tiffParams->getNumEncodingThreads();
+	std::cout << "Reading threads: " << numReadingThreads << (numReadingThreads == 0 ? " (auto: half of CPU cores)" : "") << std::endl;
+	std::cout << "Encoding threads: " << numEncodingThreads << (numEncodingThreads == 0 ? " (auto: half of CPU cores)" : "") << std::endl;
 
 }
 
@@ -201,7 +206,10 @@ void convertFile(
 	const Range& frameRange, 
 	bool silent,
 	bool infoOnly,
-	bool deleteIfExists) {
+	bool deleteIfExists,
+	int tileBatchSize,
+	int numReadingThreads,
+	int numEncodingThreads) {
 	if (!std::filesystem::exists(inputPath)) {
 		throw std::runtime_error("Input file does not exist: " + inputPath);
 	}
@@ -218,6 +226,7 @@ void convertFile(
 	Compression compression = (targetCompression == "Jpeg") ? Compression::Jpeg : Compression::Jpeg2000;
 	ImageFormat format = (targetFormat == "SVS") ? SVS : OME_TIFF;
 	ConverterParameters params(format, TIFF_CONTAINER, compression);
+	params.setTileBatchSize(tileBatchSize);
 	if (!rect.empty()) {
 		const Rect& sceneRect = scene->getCVScene()->getRect();
 		if (rect.x + rect.width > sceneRect.width 
@@ -264,6 +273,8 @@ void convertFile(
         = std::static_pointer_cast<TIFFContainerParameters>(params.getContainerParameters());
 	containerParams->setTileWidth(tileSize);
 	containerParams->setTileHeight(tileSize);
+	containerParams->setNumReadingThreads(numReadingThreads);
+	containerParams->setNumEncodingThreads(numEncodingThreads);
 	if (numZoomLevels > 0) {
 		containerParams->setNumZoomLevels(numZoomLevels);
 	}
@@ -284,9 +295,9 @@ void convertFile(
 	if (!silent) {
 		std::cout << "Converting..." << std::endl;
 		CursorGuard cursorGuard;  // RAII: cursor will be restored automatically
-		converter.createTiff(outputPath, showProgress);
+		converter.createTiff(outputPath, showProgress, tileBatchSize);
 	} else {
-		converter.createTiff(outputPath,nullptr);
+		converter.createTiff(outputPath, nullptr, tileBatchSize);
 	}
 	
 	auto endTime = std::chrono::high_resolution_clock::now();
@@ -295,6 +306,12 @@ void convertFile(
 	if (!silent) {
 		std::cout << "Conversion completed successfully." << std::endl;
 		std::cout << "Conversion time: " << formatDuration(duration) << std::endl;
+		auto readersIdle = std::chrono::duration_cast<std::chrono::milliseconds>(converter.getReadersIdleTime());
+		auto encodersIdle = std::chrono::duration_cast<std::chrono::milliseconds>(converter.getEncodersIdleTime());
+		auto writerIdle = std::chrono::duration_cast<std::chrono::milliseconds>(converter.getWriterIdleTime());
+		std::cout << "Readers idle time: " << formatDuration(readersIdle) << " (" << converter.getNumReaderThreads() << " threads)" << std::endl;
+		std::cout << "Encoders idle time: " << formatDuration(encodersIdle) << " (" << converter.getNumEncoderThreads() << " threads)" << std::endl;
+		std::cout << "Writer idle time: " << formatDuration(writerIdle) << " (" << converter.getNumWriterThreads() << " thread)" << std::endl;
 	}
 }
 

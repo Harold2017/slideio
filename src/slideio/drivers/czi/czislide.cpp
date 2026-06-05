@@ -5,6 +5,7 @@
 #include "slideio/drivers/czi/cziscene.hpp"
 #include "slideio/drivers/czi/czistructs.hpp"
 #include "slideio/core/tools/xmltools.hpp"
+#include <algorithm>
 #include <filesystem>
 #include <tinyxml2.h>
 #include <set>
@@ -25,10 +26,17 @@ static char SID_DIRECTORY[] = "ZISRAWDIRECTORY";
 static char SID_ATTACHMENT_DIR[] = "ZISRAWATTDIR";
 static char SID_ATTACHMENT_CONTENT[] = "ZISRAWATTACH";
 
-using namespace slideio;
+namespace {
+    void checkStream(std::ifstream& stream, const char* context) {
+        if (!stream.good()) {
+            RAISE_RUNTIME_ERROR << "CZISlide: failed to read " << context;
+        }
+    }
+}
 
-CZISlide::CZISlide(const std::string& filePath) : m_filePath(filePath), m_resZ(0), m_resT(0), m_magnification(0)
+CZISlide::CZISlide(const std::string& filePath, const std::string& driverId) : m_filePath(filePath), m_resZ(0), m_resT(0), m_magnification(0)
 {
+    setDriverId(driverId);
     m_metadataFormat = MetadataFormat::XML;
     init();
 }
@@ -255,39 +263,107 @@ void CZISlide::parseChannels(XMLNode* root)
     };
     int currentIndex(0);
     const XMLElement* xmlDisplayChannels = XMLTools::getElementByPath(root, displayInfoPath);
+    if (xmlDisplayChannels == nullptr) {
+        return;
+    }
+    int numChannels = 0;
     for (auto xmlDisplayChannel = xmlDisplayChannels->FirstChildElement("Channel");
-        xmlDisplayChannel != nullptr; xmlDisplayChannel = xmlDisplayChannel->NextSiblingElement())
+        xmlDisplayChannel != nullptr; xmlDisplayChannel = xmlDisplayChannel->NextSiblingElement(), ++numChannels)
     {
         const char* name = xmlDisplayChannel->Name();
         if (name && strcmp(name, "Channel") == 0)
         {
-            auto xmlShortName= xmlDisplayChannel->FirstChildElement("ShortName");
-            if(xmlShortName)
-            {
+            // Resolve which channel this DisplaySetting block applies to: by Id
+            // when present in the id map, otherwise by positional fallback.
+            const char* channelId = xmlDisplayChannel->Attribute("Id");
+            int targetIndex = -1;
+            if (channelId) {
+                auto idIt = channelIds.find(std::string(channelId));
+                if (idIt != channelIds.end()) {
+                    targetIndex = idIt->second;
+                }
+            }
+            if (targetIndex < 0 && currentIndex < static_cast<int>(m_channels.size())) {
+                // id is not in the id map. Most likely metadata is not created
+                // according to the specs.
+                targetIndex = currentIndex;
+            }
+
+            auto xmlShortName = xmlDisplayChannel->FirstChildElement("ShortName");
+            if (xmlShortName && targetIndex >= 0) {
                 const char* channelName = xmlShortName->GetText();
-                const char* channelId = xmlDisplayChannel->Attribute("Id");
-                if(channelName && channelId)
-                {
-                    auto idIt = channelIds.find(std::string(channelId));
-                    if(idIt!=channelIds.end())
-                    {
-                        const int channelIndex = idIt->second;
-                        m_channels[channelIndex].name = channelName;
+                if (channelName) {
+                    m_channels[targetIndex].name = channelName;
+                }
+            }
+
+            // Merge leaf DisplaySetting children (Color, DyeName, DyeMaxEmission,
+            // etc.) into the channel's attribute list. Skip names that already
+            // exist — Information/Image/Dimensions/Channels takes precedence
+            // since it carries the acquisition truth (EmissionWavelength,
+            // ContrastMethod, …). DisplaySetting fills the gap with display-
+            // oriented attributes that Zen writes nowhere else.
+            if (targetIndex >= 0) {
+                CZIChannelInfo& channel = m_channels[targetIndex];
+                for (const XMLElement* childElem = xmlDisplayChannel->FirstChildElement();
+                     childElem != nullptr;
+                     childElem = childElem->NextSiblingElement()) {
+                    const char* elemName = childElem->Name();
+                    const char* elemText = childElem->GetText();
+                    if (!elemName || !elemText || childElem->FirstChildElement()) {
+                        continue;
                     }
-                    else
-                    {
-                        // id is not in the id map. Most likely
-                        // matadtata is not created according to
-                        // the specs.
-                        m_channels[currentIndex].name = channelName;
+                    bool exists = false;
+                    for (const auto& a : channel.attributes) {
+                        if (a.first == elemName) {
+                            exists = true;
+                            break;
+                        }
+                    }
+                    if (!exists) {
+                        channel.attributes.emplace_back(elemName, elemText);
                     }
                 }
             }
             currentIndex++;
         }
     }
+    if (numChannels == 1 && !m_channels.empty()) {
+        processBgrChannelAttributes();
+    }
 }
 
+void CZISlide::processBgrChannelAttributes() {
+    if (m_channels.empty()) {
+        return;
+    }
+    const auto& firstAttributes = m_channels[0].attributes;
+    auto pixelTypeIt = std::find_if(firstAttributes.begin(), firstAttributes.end(),
+        [](const std::pair<std::string, std::string>& a) { return a.first == "PixelType"; });
+    if (pixelTypeIt == firstAttributes.end() || pixelTypeIt->second.compare(0, 3, "Bgr") != 0) {
+        return;
+    }
+
+    const std::vector<std::pair<std::string, std::string>> baseAttributes = firstAttributes;
+    if (m_channels.size() < 3) {
+        m_channels.resize(3);
+    }
+    m_channels[1].attributes = baseAttributes;
+    m_channels[2].attributes = baseAttributes;
+
+    // CZI BGR pixel ordering: channel 0 = Blue, 1 = Green, 2 = Red.
+    static const char* const kBgrColors[3] = { "#0000FF", "#00FF00", "#FF0000" };
+    for (int i = 0; i < 3; ++i) {
+        auto& attrs = m_channels[i].attributes;
+        auto colorIt = std::find_if(attrs.begin(), attrs.end(),
+            [](const std::pair<std::string, std::string>& a) { return a.first == "Color"; });
+        if (colorIt == attrs.end()) {
+            attrs.emplace_back("Color", kBgrColors[i]);
+        } else {
+            colorIt->second = kBgrColors[i];
+        }
+    }
+}
 
 void CZISlide::readMetadata()
 {
@@ -296,6 +372,7 @@ void CZISlide::readMetadata()
     // read segment header
     SegmentHeader header{};
     m_fileStream.read((char*)&header, sizeof(header));
+    checkStream(m_fileStream, "metadata segment header");
 	updateSegmentHeaderBE(header);
     if (strncmp(header.SID, SID_METADATA, sizeof(SID_METADATA)) != 0)
     {
@@ -304,11 +381,13 @@ void CZISlide::readMetadata()
     // read metadata header
     MetadataHeader metadataHeader{};
     m_fileStream.read((char*)&metadataHeader, sizeof(metadataHeader));
+    checkStream(m_fileStream, "metadata header");
 	updateMetadataHeaderBE(metadataHeader);
     const uint32_t xmlSize = metadataHeader.xmlSize;;
     std::vector<char> xmlString(xmlSize);
     // read metadata xml
     m_fileStream.read(xmlString.data(), xmlSize);
+    checkStream(m_fileStream, "metadata XML");
     m_rawMetadata.assign(xmlString.data(), xmlSize);
     Tools::replaceAll(m_rawMetadata, "\r\n", "\n");
     parseMetadataXmL(xmlString.data(), xmlSize);
@@ -319,11 +398,13 @@ void CZISlide::readFileHeader(FileHeader& fileHeader) {
     uint64_t pos = m_fileStream.tellg();
     SegmentHeader header{};
     m_fileStream.read(reinterpret_cast<char*>(&header), sizeof(header));
+    checkStream(m_fileStream, "file segment header");
     updateSegmentHeaderBE(header);
     if (strncmp(header.SID, SID_FILES, sizeof(SID_FILES)) != 0) {
         RAISE_RUNTIME_ERROR << "CZIImageDriver:" << m_filePath << " is not a CZI file.";
     }
     m_fileStream.read(reinterpret_cast<char*>(&fileHeader), sizeof(fileHeader));
+    checkStream(m_fileStream, "file header");
 	updateFileHeaderBE(fileHeader);
 	m_fileStream.seekg(pos);
 }
@@ -338,16 +419,22 @@ void CZISlide::readFileHeader()
 }
 
 void CZISlide::readSubBlocks(uint64_t directoryPosition, uint64_t originPos, std::vector<CZISubBlocks>& sceneBlocks, std::vector<uint64_t>& sceneIds) {
+    if (directoryPosition > UINT64_MAX - originPos) {
+        RAISE_RUNTIME_ERROR << "CZISlide::readSubBlocks: file position overflow (directoryPosition="
+            << directoryPosition << ", originPos=" << originPos << ")";
+    }
     m_fileStream.seekg(directoryPosition + originPos, std::ios_base::beg);
     // read segment header
     SegmentHeader header{};
     m_fileStream.read(reinterpret_cast<char*>(&header), sizeof(header));
+    checkStream(m_fileStream, "directory segment header");
     updateSegmentHeaderBE(header);
     if (strncmp(header.SID, SID_DIRECTORY, sizeof(SID_DIRECTORY)) != 0) {
         RAISE_RUNTIME_ERROR << "CZIImageDriver: invalid directory segment of file " << m_filePath;
     }
     DirectoryHeader directoryHeader{};
     m_fileStream.read(reinterpret_cast<char*>(&directoryHeader), sizeof(directoryHeader));
+    checkStream(m_fileStream, "directory header");
 	updateDirectoryHeaderBE(directoryHeader);
     std::map<uint64_t, int> sceneMap;
     auto filePos = m_fileStream.tellg();
@@ -359,6 +446,7 @@ void CZISlide::readSubBlocks(uint64_t directoryPosition, uint64_t originPos, std
             DirectoryEntryDV entryHeader{};
             m_fileStream.seekg(filePos);
             m_fileStream.read(reinterpret_cast<char*>(&entryHeader), sizeof(entryHeader));
+            checkStream(m_fileStream, "directory entry header");
 			updateDirectoryEntryBE(entryHeader);
             std::vector<DimensionEntryDV> dimensions(entryHeader.dimensionCount);
             for (int dim = 0; dim < entryHeader.dimensionCount; ++dim)
@@ -368,12 +456,19 @@ void CZISlide::readSubBlocks(uint64_t directoryPosition, uint64_t originPos, std
 				updateDimensionEntryBE(dimEntry);
             }
             filePos = m_fileStream.tellg();
-            m_fileStream.seekg(entryHeader.filePosition + originPos);
+            if (entryHeader.filePosition < 0 ||
+                static_cast<uint64_t>(entryHeader.filePosition) > UINT64_MAX - originPos) {
+                RAISE_RUNTIME_ERROR << "CZISlide::readSubBlocks: sub-block file position overflow (filePosition="
+                    << entryHeader.filePosition << ", originPos=" << originPos << ")";
+            }
+            m_fileStream.seekg(static_cast<uint64_t>(entryHeader.filePosition) + originPos);
             SegmentHeader segmentHeader;
             m_fileStream.read((char*)&segmentHeader, sizeof(segmentHeader));
+            checkStream(m_fileStream, "sub-block segment header");
 			updateSegmentHeaderBE(segmentHeader);
             SubBlockHeader subblockHeader;
             m_fileStream.read((char*)&subblockHeader, sizeof(subblockHeader));
+            checkStream(m_fileStream, "sub-block header");
 			updateSublockHeaderBE(subblockHeader);
             subblockHeader.direEntry.filePosition += originPos;
             block.setupBlock(subblockHeader, dimensions);
@@ -407,12 +502,12 @@ void CZISlide::readSubBlocks(uint64_t directoryPosition, uint64_t originPos, std
     }
 }
 
-std::shared_ptr<CZIScene> CZISlide::constructScene(const uint64_t sceneId, const CZISubBlocks& blocks, bool mainScene)
+std::shared_ptr<CZIScene> CZISlide::constructScene(int sceneIndex, const uint64_t sceneId, const CZISubBlocks& blocks, bool mainScene)
 {
     CZIScene::SceneParams params{};
     std::shared_ptr<CZIScene>scene(new CZIScene);
     CZIScene::dimsFromSceneId(sceneId, params);
-    scene->init(sceneId, params, m_filePath, blocks, this, mainScene);
+    scene->init(sceneId, params, m_filePath, sceneIndex, getDriverId(),blocks, this, mainScene);
     return scene;
 }
 
@@ -426,7 +521,7 @@ void CZISlide::readDirectory()
     {
         const uint64_t sceneId = sceneIds[sceneIndex];
         const CZISubBlocks& blocks = sceneBlocks[sceneIndex];
-        std::shared_ptr<CZIScene> scene = constructScene(sceneId, blocks);
+        std::shared_ptr<CZIScene> scene = constructScene(static_cast<int>(m_scenes.size()), sceneId, blocks);
         m_scenes.push_back(scene);
     }
 
@@ -537,7 +632,7 @@ void CZISlide::createCZIAttachmentScenes(const int64_t dataPos, int64_t dataSize
     {
         const uint64_t sceneId = sceneIds[sceneIndex];
         const CZISubBlocks& blocks = sceneBlocks[sceneIndex];
-        std::shared_ptr<CZIScene> scene = constructScene(sceneId, blocks, false);
+        std::shared_ptr<CZIScene> scene = constructScene(-1, sceneId, blocks, false);
         std::string sceneName = attachmentName;
         if (multiScene) {
             sceneName += std::string("(") + std::to_string(sceneIndex + 1) + std::string(")");
@@ -550,7 +645,7 @@ void CZISlide::createCZIAttachmentScenes(const int64_t dataPos, int64_t dataSize
 void CZISlide::createJpgAttachmentScenes(const int64_t dataPosition, int64_t dataSize, const std::string& name)
 {
     const int64_t fileOrigin = dataPosition + sizeof(SegmentHeader);
-    std::shared_ptr<CZIThumbnail> thumbnail(new CZIThumbnail);
+    std::shared_ptr<CZIThumbnail> thumbnail(new CZIThumbnail(getDriverId()));
     thumbnail->setAttachmentData(this, fileOrigin, dataSize, name);
     if (thumbnail->init()) {
         std::shared_ptr<CVScene> attachment = thumbnail;

@@ -32,7 +32,9 @@ TEST(Converter, convertGDALJpeg) {
 	}
     slideio::converter::SVSJpegConverterParameters parameters;
 	parameters.setQuality(99);
-	slideio::converter::convertScene(scene, parameters, outputPath);
+	parameters.setNumEncodingThreads(1);
+	parameters.setNumReadingThreads(1);
+	slideio::converter::convertScene(scene, parameters, outputPath, 1);
 	SlidePtr svsSlide = slideio::openSlide(outputPath, "SVS");
 	ScenePtr svsScene = svsSlide->getScene(0);
 	auto svsRect = svsScene->getRect();
@@ -45,6 +47,7 @@ TEST(Converter, convertGDALJpeg) {
 	scene->readBlock(sceneRect, gdalBuffer.data(), gdalBuffer.size());
 	cv::Mat svsImage(sceneHeight, sceneWidth, CV_8UC3, svsBuffer.data());
 	cv::Mat gdalImage(sceneHeight, sceneWidth, CV_8UC3, gdalBuffer.data());
+	// TestTools::showRasters(svsImage, gdalImage);
     double sim = slideio::ImageTools::computeSimilarity(svsImage, gdalImage);
 	EXPECT_LE(0.99, sim);
 }
@@ -64,7 +67,7 @@ TEST(Converter, convertGDALJp2K)
 		std::filesystem::remove(outputPath);
 	}
 	slideio::converter::SVSJp2KConverterParameters parameters;
-	slideio::converter::convertScene(scene, parameters, outputPath);
+	slideio::converter::convertScene(scene, parameters, outputPath, 1);
 	SlidePtr svsSlide = slideio::openSlide(outputPath, "SVS");
 	ScenePtr svsScene = svsSlide->getScene(0);
 	EXPECT_EQ(scene->getChannelDataType(0), svsScene->getChannelDataType(0));
@@ -87,7 +90,7 @@ TEST(Converter, nullScene)
 	std::string outputPath = TestTools::getTestImagePath("gdal", "test.svs");
 	slideio::converter::SVSJpegConverterParameters parameters;
 	parameters.setQuality(99);
-	ASSERT_THROW(slideio::converter::convertScene(nullptr, parameters, outputPath), slideio::RuntimeError);
+	ASSERT_THROW(slideio::converter::convertScene(nullptr, parameters, outputPath, 1), slideio::RuntimeError);
 }
 
 TEST(Converter, unsupportedDriver)
@@ -100,7 +103,7 @@ TEST(Converter, unsupportedDriver)
 	slideio::converter::SVSJpegConverterParameters parameters;
 	parameters.setQuality(99);
 	std::string outputPath = TestTools::getTestImagePath("gdal", "test.svs");
-	ASSERT_THROW(slideio::converter::convertScene(scene, parameters, outputPath), slideio::RuntimeError);
+	ASSERT_THROW(slideio::converter::convertScene(scene, parameters, outputPath, 1), slideio::RuntimeError);
 }
 
 TEST(Converter, outputPathExists)
@@ -112,7 +115,7 @@ TEST(Converter, outputPathExists)
 	
 	slideio::converter::SVSJpegConverterParameters parameters;
 	parameters.setQuality(99);
-	ASSERT_THROW(slideio::converter::convertScene(scene, parameters, path), slideio::RuntimeError);
+	ASSERT_THROW(slideio::converter::convertScene(scene, parameters, path, 1), slideio::RuntimeError);
 }
 
 TEST(Converter, fromMultipleScenes)
@@ -147,7 +150,7 @@ TEST(Converter, fromMultipleScenes)
 	if (std::filesystem::exists(outputPath)) {
 		std::filesystem::remove(outputPath);
 	}
-	slideio::converter::convertScene(scene, parameters, outputPath);
+	slideio::converter::convertScene(scene, parameters, outputPath, 1);
 	SlidePtr outputSlide = slideio::openSlide(outputPath);
 	ASSERT_TRUE(outputSlide != nullptr);
 	ScenePtr outputScene = outputSlide->getScene(0);
@@ -207,7 +210,7 @@ TEST(Converter, from3DScene)
 	if (std::filesystem::exists(outputPath)) {
 		std::filesystem::remove(outputPath);
 	}
-	slideio::converter::convertScene(scene, parameters, outputPath);
+	slideio::converter::convertScene(scene, parameters, outputPath, 1);
 	SlidePtr outputSlide = slideio::openSlide(outputPath);
 	ASSERT_TRUE(outputSlide != nullptr);
 	ScenePtr outputScene = outputSlide->getScene(0);
@@ -224,15 +227,16 @@ TEST(Converter, from3DScene)
 	cv::Mat outputImage(height, width, CV_8UC3, outputBuffer.data());
 	double sim = slideio::ImageTools::computeSimilarity(inputImage, outputImage);
 	EXPECT_LE(0.999, sim);
-	EXPECT_EQ(scene->getNumChannelAttributes(), 10);
-	EXPECT_GE(scene->getChannelAttributeIndex("Name"), 0);
-	EXPECT_EQ(scene->getChannelAttributeValue(0, "Name"), "ChS1");
-	EXPECT_EQ(scene->getChannelAttributeValue(1, "Name"), "Ch2");
-	EXPECT_EQ(scene->getChannelAttributeValue(2, "Name"), "NDD T1");
-	EXPECT_EQ(scene->getChannelAttributeValue(0, "EmissionWavelength"), "610.63882650000005");
-	EXPECT_EQ(scene->getChannelAttributeValue(0, "ChannelType"), "Unspecified");
-	EXPECT_EQ(scene->getChannelAttributeValue(1, "PinholeSizeAiry"), "1");
-	EXPECT_EQ(scene->getChannelAttributeValue(0, "AcquisitionMode"), "LaserScanningConfocalMicroscopy");
+	const slideio::Metadata& chanAttrs = scene->getChannelAttributes();
+	EXPECT_EQ(chanAttrs[0].size(), 17u);                                          // 10 attributes on channel 0
+	EXPECT_TRUE(chanAttrs[0].contains("Name"));
+	EXPECT_EQ(chanAttrs[0]["Name"].asString(),                "ChS1");
+	EXPECT_EQ(chanAttrs[1]["Name"].asString(),                "Ch2");
+	EXPECT_EQ(chanAttrs[2]["Name"].asString(),                "NDD T1");
+	EXPECT_EQ(chanAttrs[0]["EmissionWavelength"].asString(),  "610.63882650000005");
+	EXPECT_EQ(chanAttrs[0]["ChannelType"].asString(),         "Unspecified");
+	EXPECT_EQ(chanAttrs[1]["PinholeSizeAiry"].asString(),     "1");
+	EXPECT_EQ(chanAttrs[0]["AcquisitionMode"].asString(),     "LaserScanningConfocalMicroscopy");
 
 
 }
@@ -275,7 +279,7 @@ TEST(Converter, jpeg2k4channelsScene)
 	if (std::filesystem::exists(outputPath)) {
 		std::filesystem::remove(outputPath);
 	}
-	slideio::converter::convertScene(scene, parameters, outputPath);
+	slideio::converter::convertScene(scene, parameters, outputPath, 1);
 	SlidePtr outputSlide = slideio::openSlide(outputPath);
 	ASSERT_TRUE(outputSlide != nullptr);
 	ScenePtr outputScene = outputSlide->getScene(0);
@@ -331,7 +335,7 @@ TEST(Converter, invalidRegions)
 	if (std::filesystem::exists(outputPath)) {
 		std::filesystem::remove(outputPath);
 	}
-	slideio::converter::convertScene(scene, parameters, outputPath);
+	slideio::converter::convertScene(scene, parameters, outputPath, 1);
 	SlidePtr outputSlide = slideio::openSlide(outputPath);
 	ASSERT_TRUE(outputSlide != nullptr);
 	ScenePtr outputScene = outputSlide->getScene(0);
@@ -378,7 +382,7 @@ TEST(Converter, jpeg2k)
 	std::vector<uint8_t> buffer(rasterSize);
 	scene->readBlock(block, buffer.data(), buffer.size());
 
-	slideio::converter::convertScene(scene, parameters, outputPath);
+	slideio::converter::convertScene(scene, parameters, outputPath, 1);
 	SlidePtr outputSlide = slideio::openSlide(outputPath);
 	ASSERT_TRUE(outputSlide != nullptr);
 	ScenePtr outputScene = outputSlide->getScene(0);
@@ -424,7 +428,7 @@ TEST(Converter, jpeg2kBorderTiles)
 	std::vector<uint8_t> buffer(rasterSize);
 	scene->readBlock(block, buffer.data(), buffer.size());
 
-	slideio::converter::convertScene(scene, parameters, outputPath);
+	slideio::converter::convertScene(scene, parameters, outputPath, 1);
 	SlidePtr outputSlide = slideio::openSlide(outputPath);
 	ASSERT_TRUE(outputSlide != nullptr);
 	ScenePtr outputScene = outputSlide->getScene(0);
@@ -474,7 +478,7 @@ TEST(Converter, metadata)
 	if (std::filesystem::exists(outputPath)) {
 		std::filesystem::remove(outputPath);
 	}
-	slideio::converter::convertScene(scene, parameters, outputPath);
+	slideio::converter::convertScene(scene, parameters, outputPath, 1);
 	SlidePtr outputSlide = slideio::openSlide(outputPath);
 	ASSERT_TRUE(outputSlide != nullptr);
 	ScenePtr outputScene = outputSlide->getScene(0);
@@ -529,7 +533,7 @@ TEST(Converter, intData)
 	if (std::filesystem::exists(outputPath)) {
 		std::filesystem::remove(outputPath);
 	}
-	slideio::converter::convertScene(scene, parameters, outputPath);
+	slideio::converter::convertScene(scene, parameters, outputPath, 1);
 	SlidePtr outputSlide = slideio::openSlide(outputPath);
 	ASSERT_TRUE(outputSlide != nullptr);
 	ScenePtr outputScene = outputSlide->getScene(0);
@@ -570,7 +574,7 @@ TEST(Converter, createSVS8bitGray)
 	parameters.setQuality(99);
 	parameters.setTileWidth(256);
 	parameters.setTileHeight(256);
-	slideio::converter::convertScene(scene, parameters, svs.getPath().string());
+	slideio::converter::convertScene(scene, parameters, svs.getPath().string(), 1);
 
 	cv::Mat source;
 	slideio::ImageTools::readSmallImageRaster(imagePath, source);
@@ -596,7 +600,7 @@ TEST(Converter, createSVS8bitColor)
 	parameters.setQuality(99);
 	parameters.setTileWidth(256);
 	parameters.setTileHeight(256);
-	slideio::converter::convertScene(scene, parameters, svs.getPath().string());
+	slideio::converter::convertScene(scene, parameters, svs.getPath().string(), 1);
 
 	cv::Mat source;
 	slideio::ImageTools::readSmallImageRaster(imagePath, source);

@@ -17,3 +17,5 @@ class SvsConan(ConanFile):
         self.requires("libpng/1.6.53")
         self.requires("openjpeg/2.5.2")
         self.requires("libiconv/1.17")
+        self.requires("nlohmann_json/3.11.3")
+        

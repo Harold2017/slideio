@@ -7,6 +7,7 @@
 #include "slideio/core/slideio_core_def.hpp"
 #include "slideio/base/resolution.hpp"
 #include "slideio/base/slideio_enums.hpp"
+#include "slideio/core/metadata.hpp"
 #include <opencv2/core.hpp>
 #include <vector>
 #include <string>
@@ -23,6 +24,7 @@
 
 namespace slideio
 {
+    class CVSlide;
     /**@brief class CVScene represents a base class for opencv based representations of
      * raster images contained in a medical slide.
      *
@@ -40,6 +42,8 @@ namespace slideio
         virtual ~CVScene() = default;
         /**@brief returns path of the slide */
         virtual std::string getFilePath() const = 0;
+        virtual int getSceneIndex() const = 0;
+        virtual const std::string& getDriverId() const = 0;
         /**@brief returns scene name */
         virtual std::string getName() const = 0;
         /**@brief returns image rectangle.
@@ -190,6 +194,8 @@ namespace slideio
         virtual std::shared_ptr<CVScene> getAuxImage(const std::string& imageName) const;
         /**@brief returns string of serialized metadata. Content of the string depends on image format.*/
         virtual std::string getRawMetadata() const { return m_rawMetadata; }
+        /**@brief returns metadata as a navigable tree. Built lazily on first call. */
+        const Metadata& getMetadata() const;
         virtual void readResampledBlockChannelsEx(const cv::Rect& blockRect, const cv::Size& blockSize,
 			const std::vector<int>& componentIndices, int zSliceIndex, int tFrameIndex, cv::OutputArray output) = 0;
         virtual int getNumZoomLevels() const;
@@ -197,26 +203,36 @@ namespace slideio
         std::string toString() const;
 		/**@brief returns metadata format of the image*/
 		virtual MetadataFormat getMetadataFormat() const { return m_metadataFormat; }
-        /**brief defines a new attribute for channel. Returns attribute index */
-        virtual int defineChannelAttribute(const std::string& attributeName);
-        /**@brief return index of a channel attribute by name */
-        virtual int getChannelAttributeIndex(const std::string& attributeName) const;
-        /**@brief adds a new attribute to channels */
-        virtual void setChannelAttribute(int channelIndex, const std::string& attributeName, const std::string& attributeValues);
-        /**@brief returns channel attribute value by channel index and attribute name */
-        virtual std::string getChannelAttributeValue(int channelIndex, const std::string& attributeName) const;
-		/**@brief returns channel attribute value by channel index and attribute index */
-		virtual const std::string& getChannelAttributeValue(int channelIndex, int attributeIndex) const;
-		/**@brief returns channel attribute name */
-        virtual const std::string& getChannelAttributeName(int index) const;
-         /**@brief returns number ofchannel attributes */
-        virtual int getNumChannelAttributes() const {
-            return static_cast<int>(m_channelAttributeNames.size());
-        }
+        /**@brief returns channel attributes as a Metadata tree.
+         *
+         * Always an Array of length getNumChannels(). Each element is an
+         * Object keyed by attribute name; channels with no attributes get
+         * an empty Object. Built lazily on first call; neither the channel
+         * count nor the attribute values must change after the first read.
+         */
+        const Metadata& getChannelAttributes() const;
     protected:
+        /**@brief adds a new attribute to channels */
+        virtual void setChannelAttribute(int channelIndex, const std::string& attributeName, const std::string& attributeValue);
+        /**@brief adds a string-literal attribute to a channel */
+        virtual void setChannelAttribute(int channelIndex, const std::string& attributeName, const char* attributeValue);
+        /**@brief adds a boolean attribute to a channel */
+        virtual void setChannelAttribute(int channelIndex, const std::string& attributeName, bool attributeValue);
+        /**@brief adds an integer attribute to a channel */
+        virtual void setChannelAttribute(int channelIndex, const std::string& attributeName, int64_t attributeValue);
+        /**@brief adds a floating-point attribute to a channel */
+        virtual void setChannelAttribute(int channelIndex, const std::string& attributeName, double attributeValue);
         std::vector<int> getValidChannelIndices(const std::vector<int>& channelIndices);
         void initializeSceneBlock(const cv::Size& blockSize, const std::vector<int>& channelIndices,
                                   cv::OutputArray output) const;
+        /**@brief Driver hook: convert m_rawMetadata into a Metadata tree.
+         *
+         * The default implementation handles MetadataFormat::{None,Text,JSON,XML}.
+         * Drivers that need semantic structure override and return a
+         * MetadataBuilder. To wrap an existing JSON tree, use
+         * slideio::detail::builderFromJson from "slideio/core/metadata_internal.hpp".
+         */
+        virtual MetadataBuilder buildMetadataTree() const;
 
     protected:
         std::list<std::string> m_auxNames;
@@ -224,8 +240,13 @@ namespace slideio
         mutable std::mutex m_readBlockMutex;
         std::string m_rawMetadata;
         MetadataFormat m_metadataFormat = MetadataFormat::None;
-        std::vector<std::string> m_channelAttributeNames;
-        std::vector<std::vector<std::string>> m_channelAttributes;
+        MetadataBuilder m_channelAttrs;
+
+    private:
+        mutable std::once_flag m_metadataOnce;
+        mutable Metadata       m_metadata;
+        mutable std::once_flag m_channelAttrsOnce;
+        mutable Metadata       m_channelAttributesMeta;
     };
 }
 

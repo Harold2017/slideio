@@ -6,6 +6,7 @@ set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 
 set(TEST_SOURCES
+  test_color_tools.cpp
   test_imagedrivermanager.cpp
   test_czi_driver.cpp
   test_czi_tools.cpp
@@ -30,9 +31,12 @@ set(TEST_SOURCES
   test_similaritytools.cpp
   test_endian.cpp
   test_dimensions.cpp
+  test_metadata.cpp
+  test_metadata_builder.cpp
   test_tifffiles.cpp
   test_fiwrapper.cpp
   test_channel_attributes.cpp
+  test_boundedqueue.cpp
 )
 
 add_executable(${TEST_NAME} ${TEST_SOURCES})

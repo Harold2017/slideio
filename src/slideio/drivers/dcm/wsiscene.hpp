@@ -31,8 +31,14 @@ namespace slideio
     public:
         WSIScene();
         void addFile(std::shared_ptr<DCMFile>& file);
-        void init();
+        void init(const std::string& slideFilePath, int sceneIndex, const std::string& driverId);
         std::string getFilePath() const override;
+        int getSceneIndex() const override {
+            return m_sceneIndex;
+		}
+        const std::string& getDriverId() const override {
+            return m_driverId;
+        }
         std::string getName() const override;
         cv::Rect getRect() const override;
         int getNumChannels() const override;
@@ -68,5 +74,7 @@ namespace slideio
         double m_magnification = 0;
         Resolution m_resolution = { 0, 0 };
         std::map<std::string, std::shared_ptr<DCMScene>> m_auxImages;
+        int m_sceneIndex = 0;
+        std::string m_driverId;
     };
 };

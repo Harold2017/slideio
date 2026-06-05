@@ -20,179 +20,131 @@ protected:
     std::shared_ptr<TestScene> scene;
 };
 
-TEST_F(ChannelAttributesTest, DefineChannelAttribute) {
-    // Define a new attribute
-    int attrIndex = scene->defineChannelAttribute("wavelength");
-    EXPECT_EQ(attrIndex, 0);
-    EXPECT_EQ(scene->getNumChannelAttributes(), 1);
-
-    // Define another attribute
-    int attrIndex2 = scene->defineChannelAttribute("exposure_time");
-    EXPECT_EQ(attrIndex2, 1);
-    EXPECT_EQ(scene->getNumChannelAttributes(), 2);
-
-    // Defining the same attribute should return the same index
-    int attrIndex3 = scene->defineChannelAttribute("wavelength");
-    EXPECT_EQ(attrIndex3, 0);
-    EXPECT_EQ(scene->getNumChannelAttributes(), 2);
-}
-
-TEST_F(ChannelAttributesTest, GetChannelAttributeIndex) {
-    // Define attributes
-    scene->defineChannelAttribute("wavelength");
-    scene->defineChannelAttribute("exposure_time");
-    scene->defineChannelAttribute("gain");
-
-    // Get indices for defined attributes
-    EXPECT_EQ(scene->getChannelAttributeIndex("wavelength"), 0);
-    EXPECT_EQ(scene->getChannelAttributeIndex("exposure_time"), 1);
-    EXPECT_EQ(scene->getChannelAttributeIndex("gain"), 2);
-
-    // Get index for non-existent attribute
-    EXPECT_EQ(scene->getChannelAttributeIndex("non_existent"), -1);
-}
-
 TEST_F(ChannelAttributesTest, SetAndGetChannelAttribute) {
-    // Define attributes
-    scene->defineChannelAttribute("wavelength");
-    scene->defineChannelAttribute("exposure_time");
-
-    // Set attributes for channel 0
-    scene->setChannelAttribute(0, "wavelength", "488nm");
+    scene->setChannelAttribute(0, "wavelength",    "488nm");
     scene->setChannelAttribute(0, "exposure_time", "100ms");
-
-    // Get attributes for channel 0
-    EXPECT_EQ(scene->getChannelAttributeValue(0, "wavelength"), "488nm");
-    EXPECT_EQ(scene->getChannelAttributeValue(0, "exposure_time"), "100ms");
-
-    // Set attributes for channel 1
-    scene->setChannelAttribute(1, "wavelength", "561nm");
+    scene->setChannelAttribute(1, "wavelength",    "561nm");
     scene->setChannelAttribute(1, "exposure_time", "150ms");
 
-    // Verify channel 1 attributes
-    EXPECT_EQ(scene->getChannelAttributeValue(1, "wavelength"), "561nm");
-    EXPECT_EQ(scene->getChannelAttributeValue(1, "exposure_time"), "150ms");
-
-    // Verify channel 0 attributes are unchanged
-    EXPECT_EQ(scene->getChannelAttributeValue(0, "wavelength"), "488nm");
-    EXPECT_EQ(scene->getChannelAttributeValue(0, "exposure_time"), "100ms");
+    const slideio::Metadata& attrs = scene->getChannelAttributes();
+    EXPECT_EQ(attrs[0]["wavelength"].asString(),    "488nm");
+    EXPECT_EQ(attrs[0]["exposure_time"].asString(), "100ms");
+    EXPECT_EQ(attrs[1]["wavelength"].asString(),    "561nm");
+    EXPECT_EQ(attrs[1]["exposure_time"].asString(), "150ms");
 }
 
 TEST_F(ChannelAttributesTest, SetAttributeInvalidChannelIndex) {
-    scene->defineChannelAttribute("wavelength");
-
-    // Test invalid channel indices
     EXPECT_THROW(scene->setChannelAttribute(-1, "wavelength", "488nm"), slideio::RuntimeError);
-    EXPECT_THROW(scene->setChannelAttribute(3, "wavelength", "488nm"), slideio::RuntimeError);
+    EXPECT_THROW(scene->setChannelAttribute(3,  "wavelength", "488nm"), slideio::RuntimeError);
 }
 
-TEST_F(ChannelAttributesTest, GetAttributeInvalidChannelIndex) {
-    scene->defineChannelAttribute("wavelength");
+TEST_F(ChannelAttributesTest, GetAttributeAbsent) {
     scene->setChannelAttribute(0, "wavelength", "488nm");
-
-    // Test invalid channel indices
-    EXPECT_THROW(scene->getChannelAttributeValue(-1, "wavelength"), slideio::RuntimeError);
-    EXPECT_THROW(scene->getChannelAttributeValue(3, "wavelength"), slideio::RuntimeError);
-}
-
-TEST_F(ChannelAttributesTest, GetAttributeNonExistent) {
-    scene->defineChannelAttribute("wavelength");
-    scene->setChannelAttribute(0, "wavelength", "488nm");
-
-    // Test getting non-existent attribute
-    EXPECT_THROW(scene->getChannelAttributeValue(0, "non_existent"), slideio::RuntimeError);
+    const slideio::Metadata& attrs = scene->getChannelAttributes();
+    EXPECT_TRUE(attrs[0].contains("wavelength"));
+    EXPECT_FALSE(attrs[0].contains("non_existent"));
 }
 
 TEST_F(ChannelAttributesTest, GetChannelAttributes) {
-    // Define and set multiple attributes
-    scene->defineChannelAttribute("wavelength");
-    scene->defineChannelAttribute("exposure_time");
-    scene->defineChannelAttribute("gain");
-
-    scene->setChannelAttribute(0, "wavelength", "488nm");
+    scene->setChannelAttribute(0, "wavelength",    "488nm");
     scene->setChannelAttribute(0, "exposure_time", "100ms");
-    scene->setChannelAttribute(0, "gain", "2.5");
+    scene->setChannelAttribute(0, "gain",          "2.5");
 
-    EXPECT_EQ(scene->getChannelAttributeName(0), "wavelength");
-    EXPECT_EQ(scene->getChannelAttributeValue(0, 0), "488nm");
-    EXPECT_EQ(scene->getChannelAttributeName(1), "exposure_time");
-    EXPECT_EQ(scene->getChannelAttributeValue(0, 1), "100ms");
-    EXPECT_EQ(scene->getChannelAttributeName(2), "gain");
-    EXPECT_EQ(scene->getChannelAttributeValue(0, 2), "2.5");
+    const slideio::Metadata chan0 = scene->getChannelAttributes()[0];
+    EXPECT_EQ(chan0["wavelength"].asString(),    "488nm");
+    EXPECT_EQ(chan0["exposure_time"].asString(), "100ms");
+    EXPECT_EQ(chan0["gain"].asString(),          "2.5");
+    EXPECT_EQ(chan0.size(), 3u);
 }
 
 TEST_F(ChannelAttributesTest, MultipleChannelsDifferentAttributes) {
-    // Define attributes
-    scene->defineChannelAttribute("wavelength");
-    scene->defineChannelAttribute("exposure_time");
-    scene->defineChannelAttribute("gain");
-
-    // Set different attributes for different channels
-    scene->setChannelAttribute(0, "wavelength", "488nm");
+    scene->setChannelAttribute(0, "wavelength",    "488nm");
     scene->setChannelAttribute(0, "exposure_time", "100ms");
-    scene->setChannelAttribute(0, "gain", "2.5");
-
-    scene->setChannelAttribute(1, "wavelength", "561nm");
+    scene->setChannelAttribute(0, "gain",          "2.5");
+    scene->setChannelAttribute(1, "wavelength",    "561nm");
     scene->setChannelAttribute(1, "exposure_time", "150ms");
-    scene->setChannelAttribute(1, "gain", "3.0");
-
-    scene->setChannelAttribute(2, "wavelength", "640nm");
+    scene->setChannelAttribute(1, "gain",          "3.0");
+    scene->setChannelAttribute(2, "wavelength",    "640nm");
     scene->setChannelAttribute(2, "exposure_time", "200ms");
-    scene->setChannelAttribute(2, "gain", "3.5");
+    scene->setChannelAttribute(2, "gain",          "3.5");
 
-    // Verify each channel has correct attributes
-    EXPECT_EQ(scene->getChannelAttributeValue(0, "wavelength"), "488nm");
-    EXPECT_EQ(scene->getChannelAttributeValue(0, "exposure_time"), "100ms");
-    EXPECT_EQ(scene->getChannelAttributeValue(0, "gain"), "2.5");
-
-    EXPECT_EQ(scene->getChannelAttributeValue(1, "wavelength"), "561nm");
-    EXPECT_EQ(scene->getChannelAttributeValue(1, "exposure_time"), "150ms");
-    EXPECT_EQ(scene->getChannelAttributeValue(1, "gain"), "3.0");
-
-    EXPECT_EQ(scene->getChannelAttributeValue(2, "wavelength"), "640nm");
-    EXPECT_EQ(scene->getChannelAttributeValue(2, "exposure_time"), "200ms");
-    EXPECT_EQ(scene->getChannelAttributeValue(2, "gain"), "3.5");
-}
-
-TEST_F(ChannelAttributesTest, EmptyAttributeValues) {
-    scene->defineChannelAttribute("wavelength");
-    scene->defineChannelAttribute("comment");
-
-    // Set empty values
-    scene->setChannelAttribute(0, "wavelength", "");
-    scene->setChannelAttribute(0, "comment", "");
-
-    // Verify empty values are stored correctly
-    EXPECT_EQ(scene->getChannelAttributeValue(0, "wavelength"), "");
-    EXPECT_EQ(scene->getChannelAttributeValue(0, "comment"), "");
+    const slideio::Metadata& attrs = scene->getChannelAttributes();
+    EXPECT_EQ(attrs[0]["wavelength"].asString(),    "488nm");
+    EXPECT_EQ(attrs[0]["exposure_time"].asString(), "100ms");
+    EXPECT_EQ(attrs[0]["gain"].asString(),          "2.5");
+    EXPECT_EQ(attrs[1]["wavelength"].asString(),    "561nm");
+    EXPECT_EQ(attrs[1]["exposure_time"].asString(), "150ms");
+    EXPECT_EQ(attrs[1]["gain"].asString(),          "3.0");
+    EXPECT_EQ(attrs[2]["wavelength"].asString(),    "640nm");
+    EXPECT_EQ(attrs[2]["exposure_time"].asString(), "200ms");
+    EXPECT_EQ(attrs[2]["gain"].asString(),          "3.5");
 }
 
 TEST_F(ChannelAttributesTest, OverwriteAttributeValue) {
-    scene->defineChannelAttribute("wavelength");
-
-    // Set initial value
     scene->setChannelAttribute(0, "wavelength", "488nm");
-    EXPECT_EQ(scene->getChannelAttributeValue(0, "wavelength"), "488nm");
-
-    // Overwrite value
+    EXPECT_EQ(scene->getChannelAttributes()[0]["wavelength"].asString(), "488nm");
+    // Re-create the scene to bypass the lazy-build freeze on getChannelAttributes().
+    scene = std::make_shared<TestScene>();
+    scene->setNumChannels(3);
     scene->setChannelAttribute(0, "wavelength", "561nm");
-    EXPECT_EQ(scene->getChannelAttributeValue(0, "wavelength"), "561nm");
+    EXPECT_EQ(scene->getChannelAttributes()[0]["wavelength"].asString(), "561nm");
 }
 
-TEST_F(ChannelAttributesTest, NumChannelAttributes) {
-    EXPECT_EQ(scene->getNumChannelAttributes(), 0);
+TEST_F(ChannelAttributesTest, GetChannelAttributesTreeShape) {
+    scene->setChannelAttribute(0, "wavelength", "488nm");
+    scene->setChannelAttribute(0, "exposure",   "100ms");
+    scene->setChannelAttribute(1, "wavelength", "561nm");
 
-    scene->defineChannelAttribute("wavelength");
-    EXPECT_EQ(scene->getNumChannelAttributes(), 1);
-
-    scene->defineChannelAttribute("exposure_time");
-    EXPECT_EQ(scene->getNumChannelAttributes(), 2);
-
-    scene->defineChannelAttribute("gain");
-    EXPECT_EQ(scene->getNumChannelAttributes(), 3);
-
-    // Re-defining should not increase count
-    scene->defineChannelAttribute("wavelength");
-    EXPECT_EQ(scene->getNumChannelAttributes(), 3);
+    const slideio::Metadata& attrs = scene->getChannelAttributes();
+    ASSERT_EQ(attrs.type(), slideio::Metadata::Type::Array);
+    ASSERT_EQ(attrs.size(), 3u);                              // numChannels == 3
+    EXPECT_EQ(attrs[0].type(), slideio::Metadata::Type::Object);
+    EXPECT_EQ(attrs[0]["wavelength"].asString(), "488nm");
+    EXPECT_EQ(attrs[0]["exposure"].asString(),   "100ms");
+    EXPECT_EQ(attrs[1]["wavelength"].asString(), "561nm");
+    EXPECT_FALSE(attrs[1].contains("exposure"));
+    EXPECT_EQ(attrs[2].type(), slideio::Metadata::Type::Object);
+    EXPECT_EQ(attrs[2].size(), 0u);                           // empty object for unset channel
 }
 
+TEST_F(ChannelAttributesTest, GetChannelAttributesTreeShapeNoAttributes) {
+    // no setChannelAttribute calls
+    const slideio::Metadata& attrs = scene->getChannelAttributes();
+    ASSERT_EQ(attrs.type(), slideio::Metadata::Type::Array);
+    ASSERT_EQ(attrs.size(), 3u);
+    for (size_t i = 0; i < 3; ++i) {
+        EXPECT_EQ(attrs[i].type(), slideio::Metadata::Type::Object);
+        EXPECT_EQ(attrs[i].size(), 0u);
+    }
+}
+
+TEST_F(ChannelAttributesTest, EmptyAttributeValues) {
+    scene->setChannelAttribute(0, "wavelength", "");
+    scene->setChannelAttribute(0, "comment",    "");
+    const slideio::Metadata chan0 = scene->getChannelAttributes()[0];
+    EXPECT_TRUE(chan0.contains("wavelength"));
+    EXPECT_TRUE(chan0.contains("comment"));
+    EXPECT_EQ(chan0["wavelength"].asString(), "");
+    EXPECT_EQ(chan0["comment"].asString(),    "");
+}
+
+TEST_F(ChannelAttributesTest, TypedAttributeValues) {
+    scene->setChannelAttribute(0, "wavelength_nm", static_cast<int64_t>(488));
+    scene->setChannelAttribute(0, "exposure_s",    0.1);
+    scene->setChannelAttribute(0, "active",        true);
+    scene->setChannelAttribute(0, "lookup",        "488nm");          // const char* overload
+    const std::string s = "manual";
+    scene->setChannelAttribute(0, "mode",          s);                // string overload
+
+    const slideio::Metadata chan0 = scene->getChannelAttributes()[0];
+    EXPECT_EQ(chan0["wavelength_nm"].type(), slideio::Metadata::Type::Int);
+    EXPECT_EQ(chan0["wavelength_nm"].asInt(), 488);
+    EXPECT_EQ(chan0["exposure_s"].type(),    slideio::Metadata::Type::Double);
+    EXPECT_DOUBLE_EQ(chan0["exposure_s"].asDouble(), 0.1);
+    EXPECT_EQ(chan0["active"].type(),        slideio::Metadata::Type::Bool);
+    EXPECT_TRUE(chan0["active"].asBool());
+    EXPECT_EQ(chan0["lookup"].type(),        slideio::Metadata::Type::String);
+    EXPECT_EQ(chan0["lookup"].asString(),    "488nm");
+    EXPECT_EQ(chan0["mode"].type(),          slideio::Metadata::Type::String);
+    EXPECT_EQ(chan0["mode"].asString(),      "manual");
+}

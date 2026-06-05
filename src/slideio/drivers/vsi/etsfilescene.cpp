@@ -8,6 +8,9 @@
 #include "slideio/core/tools/tools.hpp"
 #include "slideio/drivers/vsi/etsfile.hpp"
 #include "slideio/drivers/vsi/vsifile.hpp"
+#include "slideio/drivers/vsi/volume.hpp"
+
+#include <cstdio>
 
 using namespace slideio;
 using namespace slideio::vsi;
@@ -20,9 +23,11 @@ struct TileComposerUserData
 };
 
 EtsFileScene::EtsFileScene(const std::string& filePath,
+                           int sceneIndex,
+                           const std::string& driverId,
                            std::shared_ptr<vsi::VSIFile>& vsiFile,
                            int etsIndex) :
-    VSIScene(filePath, vsiFile),
+    VSIScene(filePath, sceneIndex, driverId, vsiFile),
     m_etsIndex(etsIndex) {
     init();
 }
@@ -186,6 +191,27 @@ void EtsFileScene::init() {
     if (volume) {
         m_name = volume->getName();
         m_magnification = volume->getMagnification();
+        // Forward per-channel display colour and emission wavelength parsed
+        // from VSI metadata to the generic CVScene channel-attribute API,
+        // so downstream consumers (viewer, converters) can apply them via
+        // Scene::getChannelAttributes() — matching the OME-TIFF/CZI/SCN
+        // drivers' "Color" / "EmissionWavelength" attribute convention.
+        for (int ch = 0; ch < m_numChannels; ++ch) {
+            if (volume->hasChannelColor(ch)) {
+                uint8_t r = 0, g = 0, b = 0;
+                volume->getChannelColor(ch, r, g, b);
+                char buf[8];
+                std::snprintf(buf, sizeof(buf), "#%02X%02X%02X",
+                              static_cast<unsigned int>(r),
+                              static_cast<unsigned int>(g),
+                              static_cast<unsigned int>(b));
+                setChannelAttribute(ch, "Color", std::string(buf));
+            }
+            const double nm = volume->getChannelEmissionWavelength(ch);
+            if (nm > 0.0) {
+                setChannelAttribute(ch, "EmissionWavelength", nm);
+            }
+        }
     }
     m_compression = etsFile->getCompression();
     m_levels.resize(etsFile->getNumPyramidLevels());

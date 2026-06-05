@@ -64,7 +64,9 @@ namespace slideio
             TIFFContainerParameters() : ContainerParameters(TIFF_CONTAINER),
                                         m_tileWidth(256),
                                         m_tileHeight(256),
-                                        m_numZoomLevels(-1) {
+                                        m_numZoomLevels(-1),
+                                        m_numReadingThreads(0),
+                                        m_numEncodingThreads(0) {
             }
 
             ~TIFFContainerParameters() override = default;
@@ -93,10 +95,28 @@ namespace slideio
                 m_numZoomLevels = numZoomLevels;
             }
 
+            int getNumReadingThreads() const {
+                return m_numReadingThreads;
+            }
+
+            void setNumReadingThreads(int numReadingThreads) {
+                m_numReadingThreads = numReadingThreads;
+            }
+
+            int getNumEncodingThreads() const {
+                return m_numEncodingThreads;
+            }
+
+            void setNumEncodingThreads(int numEncodingThreads) {
+                m_numEncodingThreads = numEncodingThreads;
+            }
+
         protected:
             int m_tileWidth;
             int m_tileHeight;
             int m_numZoomLevels;
+            int m_numReadingThreads;
+            int m_numEncodingThreads;
         };
 
         class SLIDEIO_CONVERTER_EXPORTS ConverterParameters
@@ -174,6 +194,14 @@ namespace slideio
                     nullptr;
             }
 
+            int getTileBatchSize() const {
+                return m_tileBatchSize;
+			}
+
+            void setTileBatchSize(int batchSize) {
+                m_tileBatchSize = batchSize;
+            }
+
             void updateNotDefinedParameters(const std::shared_ptr<CVScene>& scene);
 
         private:
@@ -186,6 +214,7 @@ namespace slideio
             Range m_sliceRange;
             Range m_channelRange;
             Range m_frameRange;
+			int m_tileBatchSize;
             std::shared_ptr<EncodeParameters> m_encodeParameters;
             std::shared_ptr<ContainerParameters> m_containerParameters;
         };
@@ -220,6 +249,22 @@ namespace slideio
 
             void setNumZoomLevels(int numZoomLevels) {
                 return std::static_pointer_cast<TIFFContainerParameters>(m_containerParameters)->setNumZoomLevels(numZoomLevels);
+            }
+
+            int getNumReadingThreads() const {
+                return std::static_pointer_cast<TIFFContainerParameters>(m_containerParameters)->getNumReadingThreads();
+            }
+
+            void setNumReadingThreads(int numReadingThreads) {
+                std::static_pointer_cast<TIFFContainerParameters>(m_containerParameters)->setNumReadingThreads(numReadingThreads);
+            }
+
+            int getNumEncodingThreads() const {
+                return std::static_pointer_cast<TIFFContainerParameters>(m_containerParameters)->getNumEncodingThreads();
+            }
+
+            void setNumEncodingThreads(int numEncodingThreads) {
+                std::static_pointer_cast<TIFFContainerParameters>(m_containerParameters)->setNumEncodingThreads(numEncodingThreads);
             }
         };
 
@@ -292,6 +337,22 @@ namespace slideio
 
             void setNumZoomLevels(int numZoomLevels) {
                 return std::static_pointer_cast<TIFFContainerParameters>(m_containerParameters)->setNumZoomLevels(numZoomLevels);
+            }
+
+            int getNumReadingThreads() const {
+                return std::static_pointer_cast<TIFFContainerParameters>(m_containerParameters)->getNumReadingThreads();
+            }
+
+            void setNumReadingThreads(int numReadingThreads) {
+                std::static_pointer_cast<TIFFContainerParameters>(m_containerParameters)->setNumReadingThreads(numReadingThreads);
+            }
+
+            int getNumEncodingThreads() const {
+                return std::static_pointer_cast<TIFFContainerParameters>(m_containerParameters)->getNumEncodingThreads();
+            }
+
+            void setNumEncodingThreads(int numEncodingThreads) {
+                std::static_pointer_cast<TIFFContainerParameters>(m_containerParameters)->setNumEncodingThreads(numEncodingThreads);
             }
         };
 

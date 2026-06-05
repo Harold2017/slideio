@@ -12,8 +12,9 @@
 using namespace slideio;
 using namespace tinyxml2;
 
-SCNSlide::SCNSlide(const std::string& filePath) : m_filePath(filePath)
+SCNSlide::SCNSlide(const std::string& filePath, const std::string& driverId) : m_filePath(filePath)
 {
+	setDriverId(driverId);
 	m_metadataFormat = MetadataFormat::XML;
     init();
 }
@@ -54,7 +55,7 @@ void SCNSlide::constructScenes()
         {
             if (strcmp(tagName, "image") == 0)
             {
-                std::shared_ptr<SCNScene> scene(new SCNScene(m_filePath, xmlImage));
+                std::shared_ptr<SCNScene> scene(new SCNScene(m_filePath, static_cast<int>(m_Scenes.size()), getDriverId(), xmlImage));
                 double magn = scene->getMagnification();
                 if (magn >= 1.)
                 {
@@ -62,6 +63,7 @@ void SCNSlide::constructScenes()
                 }
                 else
                 {
+					scene->setSceneIndex(-1);
                     std::string name(tagName);
                     if (name.compare("image") == 0)
                         name = "Macro";
@@ -83,8 +85,9 @@ void SCNSlide::constructScenes()
                 {
                     slideio::TiffDirectory directory;
                     TiffTools::scanTiffDir(m_tiff.getHandle(), dir, 0, directory);
-                    std::shared_ptr<CVScene> scene(new SVSSmallScene(m_filePath, tagName,
+                    std::shared_ptr<SVSSmallScene> scene(new SVSSmallScene(m_filePath, getDriverId(), tagName,
                         directory, m_tiff.getHandle()));
+                    scene->setSceneIndex(-1);
                     m_auxImages[type] = scene;
                     m_auxNames.push_back(type);
                 }

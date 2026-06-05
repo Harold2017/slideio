@@ -36,6 +36,16 @@ namespace slideio
             void readRaster(ole::compound_document& doc, cv::OutputArray raster) const;
             int getValidBits() const { return m_ValidBits; }
             void setCIndex(int cIndex) { m_CIndex = cIndex; }
+
+            // Per-channel display hints carried by the per-item tag stream.
+            // Multichannel Colour is a Windows-style packed BGR int
+            // (0x00BBGGRR); 0 means the file did not assign a color. Wavelength
+            // values are in nanometers; 0 means absent. Reflector is the
+            // microscope filter cube label (e.g. "49 DAPI").
+            int getMultichannelColour() const { return m_MultichannelColour; }
+            double getEmissionWavelength() const { return m_EmissionWavelength; }
+            double getExcitationWavelength() const { return m_ExcitationWavelength; }
+            std::string getReflector() const { return m_Reflector; }
         private:
             void setWidth(int width) { m_Width = width; }
             void setHeight(int height) { m_Height = height; }
@@ -69,6 +79,10 @@ namespace slideio
             ZVIPixelFormat m_PixelFormat = ZVIPixelFormat::PF_UNKNOWN;
             int m_ZSliceCount = 1;
             DataType m_DataType = DataType::DT_Unknown;
+            int m_MultichannelColour = 0;
+            double m_EmissionWavelength = 0.0;
+            double m_ExcitationWavelength = 0.0;
+            std::string m_Reflector;
         };
 
 }

@@ -144,7 +144,7 @@ void DCMScene::checkScene()
     }
 }
 
-void DCMScene::init()
+void DCMScene::init(const std::string& slideFilePath, int sceneIndex, const std::string& driverId)
 {
     SLIDEIO_LOG(INFO) << "DCMScene::init-begin";
     if (m_files.empty())
@@ -152,7 +152,9 @@ void DCMScene::init()
         RAISE_RUNTIME_ERROR << "DCMScene::init attempt to create an empty scene.";
     }
 
-    m_filePath = (*m_files.begin())->getFilePath();
+    m_filePath = slideFilePath;
+	m_sceneIndex = sceneIndex;
+    m_driverId = driverId;
 
     checkScene();
 
@@ -180,6 +182,9 @@ void DCMScene::init()
     m_dataType = file->getDataType();
     m_compression = file->getCompression();
 
+    m_rawMetadata = file->getMetadata();
+    m_metadataFormat = MetadataFormat::JSON;
+
     prepareSliceIndices();
 
     m_levels.resize(1);
@@ -191,17 +196,6 @@ void DCMScene::init()
     level.setMagnification(getMagnification());
     level.setScale(1.);
 }
-
-std::string DCMScene::getRawMetadata() const
-{
-    std::string metadata;
-    if(!m_files.empty()) {
-        std::shared_ptr<DCMFile> file = m_files.front();
-        metadata = file->getMetadata();
-    }
-    return metadata;
-}
-
 
 void DCMScene::extractSliceRaster(const cv::Mat& frame,
                                   const cv::Rect& blockRect,
