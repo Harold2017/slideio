@@ -60,6 +60,67 @@ std::string Tools::randomUUID() {
     return "urn:uuid:" + s;
 }
 
+void Tools::resize(cv::InputArray src, cv::OutputArray dst, cv::Size dsize, int interpolation) {
+    // cv::resize does not support the CV_8S (signed 8-bit) depth, so handle it here.
+    if (src.depth() == CV_8S) {
+        const cv::Mat srcMat = src.getMat();
+        const int channels = srcMat.channels();
+        if (interpolation == cv::INTER_NEAREST) {
+            // Nearest-neighbor only copies pixel values, so the signed/unsigned
+            // interpretation is irrelevant. Reinterpret the bytes as CV_8U,
+            // resize, then reinterpret the result back to CV_8S (exact, no promotion).
+            const cv::Mat srcU(srcMat.rows, srcMat.cols,
+                               CV_MAKETYPE(CV_8U, channels), srcMat.data, srcMat.step);
+            cv::Mat resizedU;
+            cv::resize(srcU, resizedU, dsize, 0, 0, interpolation);
+            const cv::Mat resizedS(resizedU.rows, resizedU.cols,
+                                   CV_MAKETYPE(CV_8S, channels), resizedU.data, resizedU.step);
+            resizedS.copyTo(dst);
+        }
+        else {
+            // Interpolating methods need signed arithmetic. Promote to CV_16S
+            // (lossless, sign-preserving), resize, then convert back to CV_8S
+            // with saturation.
+            cv::Mat tmp;
+            srcMat.convertTo(tmp, CV_16S);
+            cv::Mat resized;
+            cv::resize(tmp, resized, dsize, 0, 0, interpolation);
+            resized.convertTo(dst, CV_8S);
+        }
+        return;
+    }
+    // cv::resize does not support the CV_32S (signed 32-bit) depth either.
+    if (src.depth() == CV_32S) {
+        const cv::Mat srcMat = src.getMat();
+        const int channels = srcMat.channels();
+        if (interpolation == cv::INTER_NEAREST) {
+            // Nearest-neighbor copies whole pixels, so reinterpret the 4-byte
+            // elements as CV_32F (bit-preserving), resize, then reinterpret back
+            // to CV_32S. Exact for the full int32 range.
+            const cv::Mat srcF(srcMat.rows, srcMat.cols,
+                               CV_MAKETYPE(CV_32F, channels), srcMat.data, srcMat.step);
+            cv::Mat resizedF;
+            cv::resize(srcF, resizedF, dsize, 0, 0, interpolation);
+            const cv::Mat resizedS(resizedF.rows, resizedF.cols,
+                                   CV_MAKETYPE(CV_32S, channels), resizedF.data, resizedF.step);
+            resizedS.copyTo(dst);
+        }
+        else {
+            // Interpolating methods need arithmetic. Promote to CV_64F, which
+            // represents the full int32 range exactly (unlike CV_32F, whose
+            // 24-bit mantissa loses precision above 2^24), resize, then convert
+            // back to CV_32S with saturation.
+            cv::Mat tmp;
+            srcMat.convertTo(tmp, CV_64F);
+            cv::Mat resized;
+            cv::resize(tmp, resized, dsize, 0, 0, interpolation);
+            resized.convertTo(dst, CV_32S);
+        }
+        return;
+    }
+    cv::resize(src, dst, dsize, 0, 0, interpolation);
+}
+
 bool Tools::matchPattern(const std::string& path, const std::string& pattern)
 {
     bool ret(false);

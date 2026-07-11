@@ -49,10 +49,10 @@ void slideio::TileComposer::composeRect(slideio::Tiler* tiler,
             if(!tileRaster.empty())
             {
                 cv::Rect scaledTileRect;
-                slideio::Tools::scaleRect(tileRect, scaleX, scaleY, scaledTileRect);
+                Tools::scaleRect(tileRect, scaleX, scaleY, scaledTileRect);
                 // scale tile raster
                 cv::Mat scaledTileRaster;
-                cv::resize(tileRaster, scaledTileRaster, scaledTileRect.size());
+                Tools::resize(tileRaster, scaledTileRaster, scaledTileRect.size());
                 // compute intersection of scaled tile rectangle and scaled block rectangle
                 cv::Rect scaledIntersectionRect = scaledBlockRect & scaledTileRect;
                 if(!scaledIntersectionRect.empty()) {

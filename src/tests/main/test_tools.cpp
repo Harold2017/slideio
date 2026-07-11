@@ -343,6 +343,144 @@ TEST(Tools, fromUnicode16) {
     //}
 }
 
+TEST(Tools, resize_8U_defaultInterpolation) {
+    // The unsigned path must be unchanged: right size/type, default INTER_LINEAR.
+    cv::Mat src(4, 4, CV_8UC1);
+    for (int y = 0; y < 4; ++y)
+        for (int x = 0; x < 4; ++x)
+            src.at<uint8_t>(y, x) = static_cast<uint8_t>(y * 4 + x);
+    cv::Mat dst;
+    Tools::resize(src, dst, cv::Size(8, 8));
+    EXPECT_EQ(dst.size(), cv::Size(8, 8));
+    EXPECT_EQ(dst.type(), CV_8UC1);
+}
+
+TEST(Tools, resize_8S_nearestPreservesSignedValues) {
+    // cv::resize does not support CV_8S; the nearest path reinterprets bytes.
+    // Nearest-neighbor must preserve exact signed pixel values (incl. negatives).
+    cv::Mat src(2, 2, CV_8SC1);
+    src.at<signed char>(0, 0) = -128;
+    src.at<signed char>(0, 1) = 127;
+    src.at<signed char>(1, 0) = -1;
+    src.at<signed char>(1, 1) = 64;
+    cv::Mat dst;
+    Tools::resize(src, dst, cv::Size(4, 4), cv::INTER_NEAREST);
+    ASSERT_EQ(dst.size(), cv::Size(4, 4));
+    ASSERT_EQ(dst.depth(), CV_8S);
+    // Integer upscaling replicates source pixels; corners map to source corners.
+    EXPECT_EQ(dst.at<signed char>(0, 0), -128);
+    EXPECT_EQ(dst.at<signed char>(0, 3), 127);
+    EXPECT_EQ(dst.at<signed char>(3, 0), -1);
+    EXPECT_EQ(dst.at<signed char>(3, 3), 64);
+    double mn = 0.0, mx = 0.0;
+    cv::minMaxLoc(dst, &mn, &mx);
+    EXPECT_EQ(mn, -128);
+    EXPECT_EQ(mx, 127);
+}
+
+TEST(Tools, resize_8S_linearPreservesNegativeConstant) {
+    // Linear interpolation of a constant must return that constant unchanged.
+    // A negative constant proves the promote-to-CV_16S path keeps the sign.
+    cv::Mat src(4, 4, CV_8SC1, cv::Scalar(-100));
+    cv::Mat dst;
+    Tools::resize(src, dst, cv::Size(8, 8)); // default INTER_LINEAR
+    ASSERT_EQ(dst.size(), cv::Size(8, 8));
+    ASSERT_EQ(dst.depth(), CV_8S);
+    for (int y = 0; y < 8; ++y)
+        for (int x = 0; x < 8; ++x)
+            EXPECT_EQ(dst.at<signed char>(y, x), -100);
+}
+
+TEST(Tools, resize_8S_linearSignedGradient) {
+    // Interpolating across a negative/positive boundary must stay signed and
+    // monotonic. An unsigned reinterpret would read -100 as 156 and break this.
+    cv::Mat src(1, 2, CV_8SC1);
+    src.at<signed char>(0, 0) = -100;
+    src.at<signed char>(0, 1) = 100;
+    cv::Mat dst;
+    Tools::resize(src, dst, cv::Size(6, 1)); // default INTER_LINEAR
+    ASSERT_EQ(dst.size(), cv::Size(6, 1));
+    ASSERT_EQ(dst.depth(), CV_8S);
+    EXPECT_LT(dst.at<signed char>(0, 0), 0);
+    EXPECT_GT(dst.at<signed char>(0, 5), 0);
+    for (int x = 1; x < 6; ++x)
+        EXPECT_LE(dst.at<signed char>(0, x - 1), dst.at<signed char>(0, x));
+}
+
+TEST(Tools, resize_8S_multichannelPreservesChannels) {
+    // Channel count and per-channel signed values must survive the workaround.
+    cv::Mat src(4, 4, CV_8SC3, cv::Scalar(-50, 0, 80));
+    cv::Mat dst;
+    Tools::resize(src, dst, cv::Size(2, 2), cv::INTER_NEAREST);
+    ASSERT_EQ(dst.type(), CV_8SC3);
+    ASSERT_EQ(dst.size(), cv::Size(2, 2));
+    const cv::Vec<signed char, 3> px = dst.at<cv::Vec<signed char, 3>>(0, 0);
+    EXPECT_EQ(px[0], -50);
+    EXPECT_EQ(px[1], 0);
+    EXPECT_EQ(px[2], 80);
+}
+
+TEST(Tools, resize_32S_nearestPreservesLargeValues) {
+    // cv::resize does not support CV_32S; the nearest path reinterprets bytes as
+    // CV_32F, so it must be exact even for values above 2^24 (not representable
+    // exactly as float) and for negatives.
+    cv::Mat src(2, 2, CV_32SC1);
+    src.at<int32_t>(0, 0) = -2000000000; // near INT32_MIN
+    src.at<int32_t>(0, 1) = 2000000001;  // > 2^24, near INT32_MAX
+    src.at<int32_t>(1, 0) = -1;
+    src.at<int32_t>(1, 1) = 16777217;    // 2^24 + 1, not exact as CV_32F
+    cv::Mat dst;
+    Tools::resize(src, dst, cv::Size(4, 4), cv::INTER_NEAREST);
+    ASSERT_EQ(dst.size(), cv::Size(4, 4));
+    ASSERT_EQ(dst.depth(), CV_32S);
+    EXPECT_EQ(dst.at<int32_t>(0, 0), -2000000000);
+    EXPECT_EQ(dst.at<int32_t>(0, 3), 2000000001);
+    EXPECT_EQ(dst.at<int32_t>(3, 0), -1);
+    EXPECT_EQ(dst.at<int32_t>(3, 3), 16777217);
+}
+
+TEST(Tools, resize_32S_linearPreservesNegativeConstant) {
+    // Linear interpolation of a constant must return that constant unchanged.
+    // A large negative constant proves the CV_64F promote/demote keeps the value.
+    cv::Mat src(4, 4, CV_32SC1, cv::Scalar(-123456789));
+    cv::Mat dst;
+    Tools::resize(src, dst, cv::Size(8, 8)); // default INTER_LINEAR
+    ASSERT_EQ(dst.size(), cv::Size(8, 8));
+    ASSERT_EQ(dst.depth(), CV_32S);
+    for (int y = 0; y < 8; ++y)
+        for (int x = 0; x < 8; ++x)
+            EXPECT_EQ(dst.at<int32_t>(y, x), -123456789);
+}
+
+TEST(Tools, resize_32S_linearSignedGradient) {
+    // Interpolating across a negative/positive boundary must stay signed and
+    // monotonic, and the midpoint of a symmetric pair must land on zero.
+    cv::Mat src(1, 2, CV_32SC1);
+    src.at<int32_t>(0, 0) = -1000000;
+    src.at<int32_t>(0, 1) = 1000000;
+    cv::Mat dst;
+    Tools::resize(src, dst, cv::Size(6, 1)); // default INTER_LINEAR
+    ASSERT_EQ(dst.size(), cv::Size(6, 1));
+    ASSERT_EQ(dst.depth(), CV_32S);
+    EXPECT_LT(dst.at<int32_t>(0, 0), 0);
+    EXPECT_GT(dst.at<int32_t>(0, 5), 0);
+    for (int x = 1; x < 6; ++x)
+        EXPECT_LE(dst.at<int32_t>(0, x - 1), dst.at<int32_t>(0, x));
+}
+
+TEST(Tools, resize_32S_multichannelPreservesChannels) {
+    // Channel count and per-channel signed values must survive the workaround.
+    cv::Mat src(4, 4, CV_32SC3, cv::Scalar(-50000, 0, 90000));
+    cv::Mat dst;
+    Tools::resize(src, dst, cv::Size(2, 2), cv::INTER_NEAREST);
+    ASSERT_EQ(dst.type(), CV_32SC3);
+    ASSERT_EQ(dst.size(), cv::Size(2, 2));
+    const cv::Vec<int32_t, 3> px = dst.at<cv::Vec<int32_t, 3>>(0, 0);
+    EXPECT_EQ(px[0], -50000);
+    EXPECT_EQ(px[1], 0);
+    EXPECT_EQ(px[2], 90000);
+}
+
 TEST(TestTools, writeReadRawImage_8UC1) {
     // Create a test image with CV_8UC1 (8-bit unsigned, 1 channel)
     cv::Mat original(100, 100, CV_8UC1);

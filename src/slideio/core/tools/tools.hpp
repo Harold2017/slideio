@@ -17,6 +17,7 @@
 #include <cmath>
 #include <list>
 #include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
 #include "slideio/base/slideio_enums.hpp"
 #include "slideio/base/slideio_structs.hpp"
 
@@ -124,7 +125,8 @@ namespace slideio
         static void replaceAll(std::string& str, const std::string& from, const std::string& to);
         static std::vector<std::string> split(const std::string& value, char delimiter);
         static std::string randomUUID();
-
+        static void resize( cv::InputArray src, cv::OutputArray dst, cv::Size dsize,
+                            int interpolation = cv::INTER_LINEAR);
     };
 }
 #endif
