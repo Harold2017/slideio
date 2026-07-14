@@ -77,7 +77,7 @@ git clone https://github.com/Booritas/slideio
 ```
 2. Build custom dependencies
 ```bash
-bash ./conan.sh
+bash ./build-dependencies.sh
 ```
 3. Build the SlideIO library
 ```bash
@@ -99,7 +99,7 @@ git clone https://github.com/Booritas/slideio
 ```
 2. Build custom dependencies
 ```powershell
-powershell ./conan.ps1
+powershell ./build-dependencies.ps1
 ```
 3. Build the SlideIO library
 ```powershell
