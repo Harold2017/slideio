@@ -1,6 +1,5 @@
 import os
 import glob
-import re
 import subprocess
 import shutil
 import sys
@@ -84,118 +83,6 @@ def get_linux_distro_name():
         return distro.id()
     except NameError:
         return ""
-
-
-def detect_msvc_conan_version():
-    """Detect the Conan compiler.version from the installed MSVC compiler.
-
-    Runs ``cl.exe`` (expected on PATH from a Visual Studio developer
-    environment) and parses its banner to extract the compiler version.
-    Computes the Conan compiler.version as ``_MSC_VER // 10``.
-
-    Returns:
-        int or None: The Conan compiler.version (e.g., 194), or None
-                     if detection fails.
-    """
-    if get_platform() != "Windows":
-        return None
-
-    try:
-        cl_result = subprocess.run(
-            ["cl.exe"], capture_output=True, text=True, timeout=10, check=False
-        )
-    except FileNotFoundError:
-        print(
-            "Warning: cl.exe not found on PATH. "
-            "Run from a Visual Studio developer command prompt."
-        )
-        return None
-
-    output = cl_result.stdout + cl_result.stderr
-    # cl.exe banner: "Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35207 for x64"
-    match = re.search(r"Version\s+(\d+)\.(\d+)\.(\d+)", output)
-    if not match:
-        print("Warning: Could not parse cl.exe version from output")
-        return None
-
-    cl_major = int(match.group(1))
-    cl_minor = int(match.group(2))
-    msc_ver = cl_major * 100 + cl_minor
-    conan_version = msc_ver // 10
-    print(
-        f"Detected cl.exe {match.group(1)}.{match.group(2)}.{match.group(3)}, "
-        f"_MSC_VER={msc_ver}, Conan compiler.version={conan_version}"
-    )
-    return conan_version
-
-
-def update_conan_profile_compiler_version(profile_path, new_version):
-    """Update the compiler.version in a Conan profile file.
-
-    Reads the profile, replaces any line starting with ``compiler.version=``
-    with the detected value, and writes back only if a change is needed.
-
-    Args:
-        profile_path: Path to the Conan profile file.
-        new_version: The new compiler.version value (int or str).
-
-    Returns:
-        bool: True if the file was updated, False otherwise.
-    """
-    if not os.path.isfile(profile_path):
-        print(f"Warning: Profile not found: {profile_path}")
-        return False
-
-    new_version = str(new_version)
-    updated = False
-    lines = []
-
-    with open(profile_path, "r", encoding="utf-8") as f:
-        for line in f:
-            stripped = line.strip()
-            if stripped.startswith("compiler.version="):
-                old_value = stripped.split("=", 1)[1]
-                if old_value == new_version:
-                    lines.append(line)
-                else:
-                    lines.append(f"compiler.version={new_version}\n")
-                    print(
-                        f"Updated {os.path.basename(profile_path)}: "
-                        f"compiler.version={old_value} -> {new_version}"
-                    )
-                    updated = True
-            else:
-                lines.append(line)
-
-    if updated:
-        with open(profile_path, "w", encoding="utf-8") as f:
-            f.writelines(lines)
-
-    return updated
-
-
-def sync_windows_conan_profiles(slideio_dir):
-    """Auto-detect MSVC version and sync Windows Conan profiles.
-
-    On Windows, detects the installed MSVC compiler version and updates
-    both the debug and release Conan profiles under conan/Windows/ so
-    their ``compiler.version`` setting matches the host toolchain.
-    """
-    if get_platform() != "Windows":
-        return
-
-    conan_version = detect_msvc_conan_version()
-    if conan_version is None:
-        print(
-            "Warning: Could not auto-detect MSVC compiler version. "
-            "Conan profiles will not be updated."
-        )
-        return
-
-    profiles_dir = os.path.join(slideio_dir, "conan", "Windows")
-    for profile_name in ["x86_64_release", "x86_64_debug"]:
-        profile_path = os.path.join(profiles_dir, profile_name)
-        update_conan_profile_compiler_version(profile_path, conan_version)
 
 
 def clean_prev_build(slideio_directory, build_directory):
@@ -490,15 +377,6 @@ if __name__ == "__main__":
     print(f"Platform: {platform.system()}")
     print(f"Processor: {platform.processor()}")
     print("---------------------------------------------------")
-
-    # Auto-detect MSVC compiler version and sync Conan profiles on Windows
-    try:
-        sync_windows_conan_profiles(slideio_directory)
-    except Exception as e:
-        print(
-            f"Warning: MSVC auto-detection failed ({e}). "
-            "Continuing with existing Conan profiles."
-        )
 
     if args.clean:
         clean_prev_build(slideio_directory, build_directory)
